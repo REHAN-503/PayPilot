@@ -1,0 +1,545 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+  ARCHIVED
+}
+
+enum IntentStatus {
+  DRAFT
+  PROCESSING
+  PLANNED
+  AWAITING_APPROVAL
+  APPROVED
+  EXECUTING
+  COMPLETED
+  REJECTED
+  CANCELLED
+  FAILED
+}
+
+enum PlanStatus {
+  DRAFT
+  READY
+  AWAITING_APPROVAL
+  APPROVED
+  EXECUTING
+  COMPLETED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+enum AutonomyMode {
+  ASK_EVERY_TIME
+  AUTO_WITHIN_LIMITS
+  MANUAL_APPROVAL
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  REVOKED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING_APPROVAL
+  APPROVED
+  ORDER_CREATED
+  PAYER_ACTION_REQUIRED
+  CAPTURE_PENDING
+  CAPTURED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  REVERSED
+}
+
+enum LedgerEntryType {
+  PAYMENT_AUTHORIZED
+  PAYMENT_CAPTURED
+  PAYMENT_FAILED
+  REFUND
+  PARTIAL_REFUND
+  REVERSAL
+  ADJUSTMENT
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum AgentActivityType {
+  INTENT_CREATED
+  INTENT_ANALYZED
+  PRODUCT_SEARCHED
+  PRODUCT_SELECTED
+  PLAN_CREATED
+  PLAN_REVISED
+  POLICY_CHECKED
+  RISK_ASSESSED
+  APPROVAL_REQUESTED
+  APPROVAL_GRANTED
+  APPROVAL_REJECTED
+  PAYMENT_CREATED
+  PAYMENT_CAPTURED
+  PAYMENT_FAILED
+  WEBHOOK_RECEIVED
+  BUDGET_REPLANNED
+  AGENT_NEGOTIATED
+  SYSTEM_EVENT
+}
+
+// ==========================================
+// BETTER AUTH MODELS
+// ==========================================
+
+model User {
+  id            String   @id
+  name          String
+  email         String
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+
+  policy       UserPolicy?
+  intents      PurchaseIntent[]
+  plans        PurchasePlan[]
+  approvals    Approval[]
+  payments     Payment[]
+  transactions Transaction[]
+  activities   AgentActivity[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id         String @id
+  accountId  String
+  providerId String
+  userId     String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ==========================================
+// USER POLICY & AUTONOMY
+// ==========================================
+
+model UserPolicy {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  autonomyMode AutonomyMode @default(ASK_EVERY_TIME)
+
+  currency             String   @default("USD")
+  maxTransactionAmount Decimal? @db.Decimal(12, 2)
+  dailySpendingLimit   Decimal? @db.Decimal(12, 2)
+  monthlySpendingLimit Decimal? @db.Decimal(12, 2)
+
+  requireApprovalAbove Decimal? @db.Decimal(12, 2)
+  allowAutoExecute     Boolean  @default(false)
+  allowNegotiation     Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_policy")
+}
+
+// ==========================================
+// PRODUCT CATALOG
+// ==========================================
+
+model Product {
+  id          String  @id @default(cuid())
+  sku         String  @unique
+  name        String
+  slug        String  @unique
+  description String?
+  category    String?
+
+  price    Decimal @db.Decimal(12, 2)
+  currency String  @default("USD")
+
+  stock      Int     @default(0)
+  imageUrl   String?
+  productUrl String?
+
+  status ProductStatus @default(ACTIVE)
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  planItems PlanItem[]
+
+  @@index([category])
+  @@index([status])
+  @@index([name])
+  @@map("product")
+}
+
+// ==========================================
+// PURCHASE INTENT
+// ==========================================
+
+model PurchaseIntent {
+  id     String @id @default(cuid())
+  userId String
+
+  rawInput        String
+  interpretedGoal String?
+  category        String?
+
+  minBudget Decimal? @db.Decimal(12, 2)
+  maxBudget Decimal? @db.Decimal(12, 2)
+  currency  String   @default("USD")
+
+  preferences Json?
+  constraints Json?
+
+  status IntentStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plans      PurchasePlan[]
+  activities AgentActivity[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("purchase_intent")
+}
+
+// ==========================================
+// PURCHASE PLAN
+// ==========================================
+
+model PurchasePlan {
+  id       String @id @default(cuid())
+  userId   String
+  intentId String
+
+  version Int        @default(1)
+  status  PlanStatus @default(DRAFT)
+
+  subtotal Decimal @db.Decimal(12, 2)
+  tax      Decimal @default(0) @db.Decimal(12, 2)
+  shipping Decimal @default(0) @db.Decimal(12, 2)
+  discount Decimal @default(0) @db.Decimal(12, 2)
+  total    Decimal @db.Decimal(12, 2)
+
+  currency    String    @default("USD")
+  explanation String?
+  expiresAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  intent PurchaseIntent @relation(fields: [intentId], references: [id], onDelete: Cascade)
+
+  items           PlanItem[]
+  approvals       Approval[]
+  riskAssessments RiskAssessment[]
+  payments        Payment[]
+  activities      AgentActivity[]
+
+  @@unique([intentId, version])
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("purchase_plan")
+}
+
+// ==========================================
+// PURCHASE PLAN ITEMS
+// ==========================================
+
+model PlanItem {
+  id        String  @id @default(cuid())
+  planId    String
+  productId String?
+
+  productName String
+  productSku  String?
+
+  unitPrice Decimal @db.Decimal(12, 2)
+  quantity  Int     @default(1)
+  lineTotal Decimal @db.Decimal(12, 2)
+  currency  String  @default("USD")
+
+  createdAt DateTime @default(now())
+
+  plan    PurchasePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  product Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([planId])
+  @@index([productId])
+  @@map("plan_item")
+}
+
+// ==========================================
+// USER APPROVALS
+// ==========================================
+
+model Approval {
+  id     String @id @default(cuid())
+  userId String
+  planId String
+
+  status ApprovalStatus @default(PENDING)
+
+  decisionNote String?
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  expiresAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan PurchasePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([planId])
+  @@map("approval")
+}
+
+// ==========================================
+// TRANSACTION RISK ASSESSMENT
+// ==========================================
+
+model RiskAssessment {
+  id     String @id @default(cuid())
+  planId String
+
+  level RiskLevel
+  score Int
+
+  reasons         Json
+  recommendations Json?
+
+  policyPassed Boolean @default(false)
+  explanation  String?
+
+  createdAt DateTime @default(now())
+
+  plan PurchasePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, createdAt])
+  @@index([level])
+  @@map("risk_assessment")
+}
+
+// ==========================================
+// PAYPAL PAYMENT
+// ==========================================
+
+model Payment {
+  id     String @id @default(cuid())
+  userId String
+  planId String
+
+  status PaymentStatus @default(CREATED)
+
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @default("USD")
+
+  paypalOrderId   String? @unique
+  paypalCaptureId String? @unique
+  paypalPayerId   String?
+
+  idempotencyKey String @unique
+
+  failureCode    String?
+  failureMessage String?
+
+  approvedAt DateTime?
+  capturedAt DateTime?
+  refundedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  plan PurchasePlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  transactions Transaction[]
+  activities   AgentActivity[]
+
+  @@index([userId, createdAt])
+  @@index([planId])
+  @@index([status])
+  @@map("payment")
+}
+
+// ==========================================
+// IMMUTABLE TRANSACTION LEDGER
+// ==========================================
+
+model Transaction {
+  id        String @id @default(cuid())
+  userId    String
+  paymentId String
+
+  type LedgerEntryType
+
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @default("USD")
+
+  externalReference String?
+  idempotencyKey    String  @unique
+
+  description String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([paymentId, createdAt])
+  @@index([type])
+  @@map("transaction")
+}
+
+// ==========================================
+// PAYPAL WEBHOOK EVENT DEDUPLICATION
+// ==========================================
+
+model WebhookEvent {
+  id String @id @default(cuid())
+
+  eventId   String @unique
+  eventType String
+
+  resourceId String?
+  status     WebhookStatus @default(RECEIVED)
+
+  payload Json
+
+  receivedAt    DateTime  @default(now())
+  processedAt   DateTime?
+  failureReason String?
+
+  @@index([eventType, receivedAt])
+  @@index([status])
+  @@map("webhook_event")
+}
+
+// ==========================================
+// AGENT ACTIVITY & EXPLAINABILITY
+// ==========================================
+
+model AgentActivity {
+  id String @id @default(cuid())
+
+  userId    String
+  intentId  String?
+  planId    String?
+  paymentId String?
+
+  type AgentActivityType
+
+  title       String
+  description String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  intent  PurchaseIntent? @relation(fields: [intentId], references: [id], onDelete: SetNull)
+  plan    PurchasePlan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
+  payment Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([intentId])
+  @@index([planId])
+  @@index([paymentId])
+  @@index([type])
+  @@map("agent_activity")
+}
