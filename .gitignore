@@ -13,3 +13,8 @@ coverage/
 .idea/
 .vscode/
 apps/api/src/generated/prisma/
+*.tsbuildinfo
+apps/api/.agents/
+apps/api/.claude/
+apps/api/.windsurf/
+apps/api/skills-lock.json
