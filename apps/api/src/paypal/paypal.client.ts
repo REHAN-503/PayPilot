@@ -119,6 +119,10 @@ export class PayPalClient {
     );
   }
 
+  getCurrency(): string {
+    return (this.config.get<string>('PAYPAL_CURRENCY') || 'USD').toUpperCase();
+  }
+
   getApprovalUrl(orderId: string): string {
     const checkoutHost = this.baseUrl.includes('sandbox')
       ? 'www.sandbox.paypal.com'

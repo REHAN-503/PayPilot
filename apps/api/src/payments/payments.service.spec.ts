@@ -41,6 +41,7 @@ describe('PaymentsService Gating & Security', () => {
       createOrder: vi.fn(),
       captureOrder: vi.fn(),
       getOrder: vi.fn(),
+      getCurrency: vi.fn(() => 'USD'),
       getApprovalUrl: vi.fn((orderId: string) => `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`),
     };
 

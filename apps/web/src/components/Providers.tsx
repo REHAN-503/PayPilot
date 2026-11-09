@@ -22,7 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const initialPayPalOptions = {
     clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || 'sb',
-    currency: 'USD',
+    currency: process.env.NEXT_PUBLIC_PAYPAL_CURRENCY || 'USD',
     intent: 'capture',
     components: 'buttons',
   };

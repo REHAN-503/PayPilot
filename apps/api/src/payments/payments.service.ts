@@ -203,7 +203,7 @@ export class PaymentsService {
     const livePolicyEval = evaluate(
       {
         total: recomputedTotal,
-        currency: 'USD',
+        currency: this.paypalClient.getCurrency(),
         category,
         expiresAt: plan.expiresAt,
         items: plan.items.map((i) => ({
@@ -272,8 +272,11 @@ export class PaymentsService {
         payment: existingPayment,
         orderId: existingPayment.paypalOrderId,
         status: existingPayment.status,
+        approveUrl: this.paypalClient.getApprovalUrl(existingPayment.paypalOrderId),
       };
     }
+
+    const paypalCurrency = this.paypalClient.getCurrency();
 
     // 6. Create initial Payment record in DB with ORDER_CREATED
     const payment = await this.prisma.payment.upsert({
@@ -283,7 +286,7 @@ export class PaymentsService {
         planId: plan.id,
         status: 'ORDER_CREATED',
         amount: recomputedTotal.toFixed(2),
-        currency: 'USD',
+        currency: paypalCurrency,
         idempotencyKey,
       },
       update: {},
@@ -296,7 +299,7 @@ export class PaymentsService {
       customId: payment.id,
       invoiceId: payment.id,
       description: `PayPilot Plan #${plan.id.slice(-6)}`,
-      currency: 'USD',
+      currency: paypalCurrency,
       total: recomputedTotal,
       subtotal: recomputedTotal,
       items: plan.items.map((item) => ({
@@ -444,7 +447,7 @@ export class PaymentsService {
             userId,
             paymentId: payment.id,
             amount: payment.amount,
-            currency: 'USD',
+            currency: payment.currency,
             externalReference: captureId,
             idempotencyKey: `${captureId}:PAYMENT_CAPTURED`,
             description: `PayPal capture settled: Order ${payment.paypalOrderId}, Capture ${captureId}`,

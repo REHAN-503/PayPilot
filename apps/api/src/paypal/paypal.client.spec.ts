@@ -3,6 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { PayPalClient } from './paypal.client.js';
 
 describe('PayPalClient Security and Signature Verification', () => {
+  it('uses the configured PayPal currency consistently', () => {
+    const client = new PayPalClient(
+      new ConfigService({
+        PAYPAL_CURRENCY: 'eur',
+      }),
+    );
+
+    expect(client.getCurrency()).toBe('EUR');
+  });
+
   it('strictly rejects forged MOCK_SIG header bypass on normal verification', async () => {
     const config = new ConfigService({
       DEMO_MODE: 'true',
@@ -364,4 +374,3 @@ describe('PayPalClient Security and Signature Verification', () => {
     expect(captureUnit!.amount?.value).not.toBe('189.99');
   });
 });
-

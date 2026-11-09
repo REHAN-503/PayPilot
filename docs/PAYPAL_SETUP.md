@@ -97,6 +97,7 @@ Ensure your `.env` file in root or `apps/api/.env` contains:
 ```env
 # PayPal Sandbox Configuration
 PAYPAL_API_BASE_URL="https://api-m.sandbox.paypal.com"
+PAYPAL_CURRENCY="USD"
 PAYPAL_CLIENT_ID="<your_sandbox_client_id>"
 PAYPAL_CLIENT_SECRET="<your_sandbox_client_secret>"
 PAYPAL_WEBHOOK_ID="<your_sandbox_webhook_id>"
@@ -104,4 +105,3 @@ PAYPAL_WEBHOOK_ID="<your_sandbox_webhook_id>"
 # Demo Mode toggle (true runs offline simulation fallback if credentials dummy)
 DEMO_MODE="true"
 ```
-
