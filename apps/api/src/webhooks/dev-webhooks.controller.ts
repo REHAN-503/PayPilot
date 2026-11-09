@@ -65,12 +65,13 @@ export class DevWebhooksController {
       });
 
       const result = await this.webhooksService.handleWebhook(
-        { transmissionSig: 'SIMULATED_MOCK_SIGNATURE' },
+        { transmissionId: `SIM-DUP-${Date.now()}`, transmissionTime: new Date().toISOString() },
         {
           id: targetEventId,
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
           resource: { id: body.captureId || 'SIM-CAP-DUP' },
         },
+        { skipVerification: true },
       );
 
       return {

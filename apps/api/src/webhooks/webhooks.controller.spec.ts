@@ -70,5 +70,51 @@ describe('WebhooksController /webhooks/paypal', () => {
       ),
     ).rejects.toThrow(UnauthorizedException);
   });
+
+  it('rejects an empty request with missing headers when service rejects unverified signature', async () => {
+    const payload = {};
+    const mockReq = { rawBody: Buffer.from('{}') } as any;
+
+    mockWebhooksService.handleWebhook.mockRejectedValue(
+      new UnauthorizedException('Invalid PayPal webhook signature'),
+    );
+
+    await expect(
+      controller.handlePayPalWebhook(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        payload,
+        mockReq,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('never honors skipVerification even if the caller attempts to pass it in payload', async () => {
+    const payload = {
+      id: 'WH-ATTACK',
+      event_type: 'PAYMENT.CAPTURE.COMPLETED',
+      skipVerification: true,
+    };
+    const mockReq = { rawBody: Buffer.from(JSON.stringify(payload)) } as any;
+
+    mockWebhooksService.handleWebhook.mockResolvedValue({ status: 'PROCESSED' });
+
+    await controller.handlePayPalWebhook(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      payload,
+      mockReq,
+    );
+
+    const callArgs = mockWebhooksService.handleWebhook.mock.calls[0];
+    const options = callArgs[2];
+    expect(options?.skipVerification).toBeUndefined();
+  });
 });
 

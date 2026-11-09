@@ -48,9 +48,9 @@ export class WebhooksService {
       throw new UnauthorizedException('Invalid PayPal webhook signature');
     }
 
-    const eventId = payload.id ?? `evt-${Date.now()}`;
-    const eventType = payload.event_type ?? 'UNKNOWN';
-    const resource = payload.resource ?? {};
+    const eventId = payload?.id ?? `evt-${Date.now()}`;
+    const eventType = payload?.event_type ?? 'UNKNOWN';
+    const resource = payload?.resource ?? {};
 
     // 2. Webhook idempotency: Deduplication on unique WebhookEvent.eventId
     const existingEvent = await this.prisma.webhookEvent.findUnique({

@@ -90,6 +90,8 @@ describe('PayPalClient Security and Signature Verification', () => {
     const config = new ConfigService({
       DEMO_MODE: 'true',
       NODE_ENV: 'development',
+      PAYPAL_CLIENT_ID: 'valid_client_id',
+      PAYPAL_CLIENT_SECRET: 'valid_client_secret',
       // No PAYPAL_WEBHOOK_ID
     });
     const client = new PayPalClient(config);
@@ -99,6 +101,205 @@ describe('PayPalClient Security and Signature Verification', () => {
       certUrl: 'https://api.sandbox.paypal.com/cert',
       transmissionId: 'trans-123',
       transmissionSig: 'REAL_SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it('rejects if PayPal credentials are placeholder or missing on incoming webhook', async () => {
+    const config = new ConfigService({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      PAYPAL_WEBHOOK_ID: 'WH-TEST-ID',
+      PAYPAL_CLIENT_ID: 'your_paypal_sandbox_client_id',
+      PAYPAL_CLIENT_SECRET: 'your_paypal_sandbox_client_secret',
+    });
+    const client = new PayPalClient(config);
+
+    const result = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: 'REAL_SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it('rejects if required transmission headers are missing', async () => {
+    const config = new ConfigService({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      PAYPAL_WEBHOOK_ID: 'WH-TEST-ID',
+      PAYPAL_CLIENT_ID: 'valid_client_id',
+      PAYPAL_CLIENT_SECRET: 'valid_client_secret',
+    });
+    const client = new PayPalClient(config);
+
+    // Missing authAlgo
+    const res1 = await client.verifyWebhookSignature({
+      authAlgo: '',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: 'SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+    });
+    expect(res1).toBe(false);
+
+    // Missing certUrl
+    const res2 = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: '',
+      transmissionId: 'trans-123',
+      transmissionSig: 'SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+    });
+    expect(res2).toBe(false);
+
+    // Missing transmissionSig
+    const res3 = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: '',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+    });
+    expect(res3).toBe(false);
+  });
+
+  it('rejects if webhook event payload is empty or missing', async () => {
+    const config = new ConfigService({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      PAYPAL_WEBHOOK_ID: 'WH-TEST-ID',
+      PAYPAL_CLIENT_ID: 'valid_client_id',
+      PAYPAL_CLIENT_SECRET: 'valid_client_secret',
+    });
+    const client = new PayPalClient(config);
+
+    const result = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: 'SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: {},
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it('rejects if rawBody is malformed JSON', async () => {
+    const config = new ConfigService({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      PAYPAL_WEBHOOK_ID: 'WH-TEST-ID',
+      PAYPAL_CLIENT_ID: 'valid_client_id',
+      PAYPAL_CLIENT_SECRET: 'valid_client_secret',
+    });
+    const client = new PayPalClient(config);
+
+    const result = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: 'SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+      rawBody: '{malformed_json:',
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it('calls PayPal verification API and returns true on SUCCESS', async () => {
+    const config = new ConfigService({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      PAYPAL_WEBHOOK_ID: 'WH-TEST-ID',
+      PAYPAL_CLIENT_ID: 'valid_client_id',
+      PAYPAL_CLIENT_SECRET: 'valid_client_secret',
+    });
+    const client = new PayPalClient(config);
+
+    // Mock getAccessToken and fetchWithRetry
+    (client as any).getAccessToken = async () => 'mock-token';
+    (client as any).fetchWithRetry = async () => ({
+      ok: true,
+      json: async () => ({ verification_status: 'SUCCESS' }),
+      headers: new Headers(),
+    });
+
+    const result = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: 'SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it('returns false when PayPal verification API returns FAILURE', async () => {
+    const config = new ConfigService({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      PAYPAL_WEBHOOK_ID: 'WH-TEST-ID',
+      PAYPAL_CLIENT_ID: 'valid_client_id',
+      PAYPAL_CLIENT_SECRET: 'valid_client_secret',
+    });
+    const client = new PayPalClient(config);
+
+    (client as any).getAccessToken = async () => 'mock-token';
+    (client as any).fetchWithRetry = async () => ({
+      ok: true,
+      json: async () => ({ verification_status: 'FAILURE' }),
+      headers: new Headers(),
+    });
+
+    const result = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: 'SIG',
+      transmissionTime: new Date().toISOString(),
+      webhookEvent: { id: 'evt-1' },
+    });
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false when PayPal verification API is unavailable or returns HTTP error', async () => {
+    const config = new ConfigService({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'development',
+      PAYPAL_WEBHOOK_ID: 'WH-TEST-ID',
+      PAYPAL_CLIENT_ID: 'valid_client_id',
+      PAYPAL_CLIENT_SECRET: 'valid_client_secret',
+    });
+    const client = new PayPalClient(config);
+
+    (client as any).getAccessToken = async () => 'mock-token';
+    (client as any).fetchWithRetry = async () => ({
+      ok: false,
+      status: 503,
+      headers: new Headers(),
+    });
+
+    const result = await client.verifyWebhookSignature({
+      authAlgo: 'SHA256withRSA',
+      certUrl: 'https://api.sandbox.paypal.com/cert',
+      transmissionId: 'trans-123',
+      transmissionSig: 'SIG',
       transmissionTime: new Date().toISOString(),
       webhookEvent: { id: 'evt-1' },
     });

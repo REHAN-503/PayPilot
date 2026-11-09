@@ -3,7 +3,10 @@ import { AppModule } from './app.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    bodyParser: false,
+    // Enable NestJS built-in raw body parser.
+    // This preserves req.rawBody as a Buffer on incoming requests (for PayPal webhook verification)
+    // while keeping standard JSON body parsing intact for all API controllers.
+    rawBody: true,
   });
 
   const configuredOrigins = (process.env.WEB_ORIGIN || '')

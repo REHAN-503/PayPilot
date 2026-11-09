@@ -430,18 +430,47 @@ export class PayPalClient {
       return false;
     }
 
+    // Require all necessary PayPal transmission headers
+    if (
+      !params.authAlgo ||
+      !params.certUrl ||
+      !params.transmissionId ||
+      !params.transmissionSig ||
+      !params.transmissionTime
+    ) {
+      this.logger.warn(
+        `[PayPalClient] Missing required PayPal transmission headers (authAlgo=${Boolean(params.authAlgo)}, certUrl=${Boolean(params.certUrl)}, transmissionId=${Boolean(params.transmissionId)}, transmissionSig=${Boolean(params.transmissionSig)}, transmissionTime=${Boolean(params.transmissionTime)}); rejecting unverified webhook`,
+      );
+      return false;
+    }
+
+    // Require valid, non-empty event payload
+    if (
+      !params.webhookEvent ||
+      typeof params.webhookEvent !== 'object' ||
+      Object.keys(params.webhookEvent).length === 0
+    ) {
+      this.logger.warn(
+        '[PayPalClient] Missing or empty webhook event payload; rejecting unverified webhook',
+      );
+      return false;
+    }
+
+    // Validate rawBody if provided before making any network calls
+    let eventPayload: Record<string, unknown> = params.webhookEvent;
+    if (params.rawBody) {
+      try {
+        eventPayload = JSON.parse(params.rawBody);
+      } catch {
+        this.logger.warn(
+          '[PayPalClient] Malformed rawBody JSON; rejecting unverified webhook',
+        );
+        return false;
+      }
+    }
+
     try {
       const token = await this.getAccessToken();
-
-      // Use raw body if available, otherwise serialize webhook event
-      let eventPayload: Record<string, unknown> = params.webhookEvent;
-      if (params.rawBody) {
-        try {
-          eventPayload = JSON.parse(params.rawBody);
-        } catch {
-          eventPayload = params.webhookEvent;
-        }
-      }
 
       const body = {
         auth_algo: params.authAlgo,

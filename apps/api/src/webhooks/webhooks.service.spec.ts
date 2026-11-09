@@ -60,6 +60,21 @@ describe('WebhooksService Idempotency & Out-of-Order Security', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
+  it('ensures rejected webhook does not write to WebhookEvent, ledger, or payments', async () => {
+    mockPayPalClient.verifyWebhookSignature.mockResolvedValue(false);
+
+    await expect(
+      service.handleWebhook(
+        {},
+        {},
+      ),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(mockPrisma.webhookEvent.create).not.toHaveBeenCalled();
+    expect(mockPrisma.payment.update).not.toHaveBeenCalled();
+    expect(mockLedgerService.record).not.toHaveBeenCalled();
+  });
+
   it('enforces webhook idempotency: duplicate eventId is acknowledged and ignored without duplicate ledger recording', async () => {
     mockPrisma.webhookEvent.findUnique.mockResolvedValue({
       id: 'existing-event-row',
