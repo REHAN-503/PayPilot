@@ -12,6 +12,10 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter api exec prisma migrate deploy",
+    "db:seed": "pnpm --filter api exec tsx prisma/seed.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -1,0 +1,170 @@
+openapi: 3.1.0
+info:
+  title: PayPilot API
+  description: Autonomous, policy-governed procurement agent integrating PayPal Orders v2 and Webhooks.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+    description: Local API Server
+  - url: https://api.paypilot.dev
+    description: Production Gateway
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: PayPilot API
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /intents:
+    post:
+      summary: Submit procurement intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rawInput
+              properties:
+                rawInput:
+                  type: string
+                  example: "I need a developer monitor under $250. Prioritize text clarity and value."
+      responses:
+        '201':
+          description: Purchase intent processed and plan generated
+        '400':
+          description: Invalid input
+
+  /plans:
+    get:
+      summary: List user purchase plans
+      responses:
+        '200':
+          description: Array of purchase plans
+
+  /plans/{id}:
+    get:
+      summary: Get purchase plan details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detailed plan object
+
+  /plans/{id}/approve:
+    post:
+      summary: Approve purchase plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+      responses:
+        '200':
+          description: Plan approved
+
+  /plans/{id}/pay:
+    post:
+      summary: Initialize PayPal payment for approved plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: PayPal order created
+
+  /payments/{id}/capture:
+    post:
+      summary: Capture PayPal order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderId
+              properties:
+                orderId:
+                  type: string
+      responses:
+        '200':
+          description: Payment captured, awaiting webhook confirmation
+
+  /plans/{id}/negotiate:
+    post:
+      summary: Start buyer-merchant negotiation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Negotiation completed
+
+  /webhooks/paypal:
+    post:
+      summary: Authoritative PayPal webhook listener
+      responses:
+        '200':
+          description: Webhook received and verified
+
+  /policies/me:
+    get:
+      summary: Get user spending policy
+      responses:
+        '200':
+          description: User policy and spend metrics
+    patch:
+      summary: Update spending limits
+      responses:
+        '200':
+          description: Policy updated
+
+  /timeline:
+    get:
+      summary: Unified trust timeline
+      responses:
+        '200':
+          description: Chronological event list
+

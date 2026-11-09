@@ -1,24 +1,59 @@
 # PayPilot ⚡
-> **Permissioned AI Commerce Agent for Explainable, Policy-Governed PayPal Payments**
+
+> **Autonomous, Policy-Governed Commerce Agent with Cryptographic PayPal Settlement**  
 > *Built for the PayPal AI Hackathon (Devpost)*
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16_App_Router-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-cyan?style=flat-square&logo=react)](https://react.dev/)
+[![NestJS](https://img.shields.io/badge/NestJS-12-red?style=flat-square&logo=nestjs)](https://nestjs.com/)
+[![PayPal Orders v2](https://img.shields.io/badge/PayPal-Orders_v2_REST-003087?style=flat-square&logo=paypal)](https://developer.paypal.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 ---
 
-## 🎯 Executive Summary & Core Principle
+## 📸 Screenshots & Cockpit Previews
 
-**PayPilot** transforms natural-language purchase intent into a strictly governed, explainable, and cryptographically verifiable payment workflow. Unlike unconstrained AI purchasing assistants, PayPilot enforces strict mathematical separation between AI planning and financial execution:
+| Command Center & Live Agent Stepper | Interactive Governance Approval Sheet |
+|---|---|
+| ![Command Center](https://placehold.co/1200x675/070b14/3b82f6?text=PayPilot+Command+Center+%26+Live+Agent+Panel) | ![Approval Sheet](https://placehold.co/1200x675/070b14/10b981?text=Two-Party+Governance+Approval+Sheet) |
 
-$$\text{\bf AI Proposes} \longrightarrow \text{\bf Policy Engine Decides} \longrightarrow \text{\bf User Authorizes} \longrightarrow \text{\bf PayPal Executes} \longrightarrow \text{\bf Webhooks Verify} \longrightarrow \text{\bf Ledger Records}$$
+| Multi-Agent Autonomous Negotiation | Verifiable Trust Timeline |
+|---|---|
+| ![Negotiation](https://placehold.co/1200x675/070b14/8b5cf6?text=Buyer+Agent+vs+Merchant+Agent+Negotiation) | ![Trust Timeline](https://placehold.co/1200x675/070b14/06b6d4?text=End-to-End+Verifiable+Trust+Timeline) |
 
-### Non-Negotiable Guardrails
-1. **The LLM Never Moves Money and Never Sees Secrets:** The model only generates structured, Zod-validated intent proposals. Payment initiation is isolated to backend services only when `plan.status === 'APPROVED'` and deterministic spending policies have passed.
-2. **Server-Side Recomputed Pricing:** Client-provided prices and LLM-generated totals are rejected; all pricing, discounts, shipping, and totals are recomputed directly from authoritative PostgreSQL records.
-3. **Pure-Function Policy & Risk Gating:** Hard spending limits (transaction ceilings, daily and monthly budget caps, approval thresholds) and multi-factor risk assessments are pure, unit-tested functions—never prompt-based.
-4. **Authoritative Webhooks:** A frontend "success" page is never proof of payment. Only PayPal Webhooks (`PAYMENT.CAPTURE.COMPLETED`) or verified REST captures authoritatively settle transactions.
-5. **PostgreSQL-Enforced Immutable Ledger:** Transaction ledger rows are append-only. A custom PostgreSQL trigger (`trg_transaction_immutable`) rejects any `UPDATE` or `DELETE` at the database engine level.
-6. **Strict USD Currency:** All transactions, limits, and order line items are standardized in USD.
-7. **Idempotency Everywhere:** Enforced via `PayPal-Request-Id` headers on orders/captures, unique `Payment.idempotencyKey`, and unique `WebhookEvent.eventId`.
-8. **Offline Demo Mode (`DEMO_MODE=true`):** Built-in deterministic offline fallback engine allowing the full end-to-end commerce workflow to run without external API keys.
+---
+
+## 🎯 Problem & Solution
+
+### The Problem
+Autonomous AI agents are transitioning from conversation to real-world tool execution. However, when AI agents interact with financial rails, existing prototypes either:
+1. **Rely on Fragile Prompts**: Asking an LLM *"Is this safe to buy?"*, which is easily bypassed through prompt injection.
+2. **Grant Unbounded Financial Authority**: Giving agents direct API credentials with no deterministic spending caps, risking runaway loops.
+3. **Lack Verifiable Auditability**: Storing payment records without immutable transaction ledgers or cryptographic proof of settlement.
+
+### The Solution: PayPilot
+PayPilot enforces a strict architectural boundary between **stochastic generative intelligence** and **deterministic financial execution**:
+
+$$\text{\bf User Intent} \longrightarrow \text{\bf AI Planning} \longrightarrow \text{\bf Deterministic Policy Guard} \longrightarrow \text{\bf Human Authorization} \longrightarrow \text{\bf PayPal Orders v2} \longrightarrow \text{\bf Webhook Verification} \longrightarrow \text{\bf Immutable Ledger}$$
+
+- The LLM **never touches credentials**, **never moves money**, and **cannot bypass policy limits**.
+- Hard spending limits, velocity checks, and risk gates are pure TypeScript functions with **100% test coverage**.
+- Payments only settle once **PayPal's cryptographic webhook signature** is received and verified.
+
+---
+
+## ✨ Key Features
+
+1. **Autonomous Procurement Planning**: Converts freeform goals into structured, itemized `PurchasePlan` candidates with spec tradeoff explanations.
+2. **Deterministic Policy Engine & Budget Guard**: Enforces per-transaction caps, daily/monthly budgets, currency matching (`USD`), and category routing.
+3. **Autonomous Budget Re-Planning**: When a preferred item exceeds limits (e.g., $289 monitor against a $250 limit), the agent automatically identifies the best compliant substitution (e.g., PixelView 24" at $229.99), explaining exact trade-offs.
+4. **Behavioral Risk Gate**: Multi-signal scoring engine (0–100) evaluating budget consumption, merchant trust, catalog scarcity, recent payment velocity, and basket size.
+5. **Interactive Approval Sheet**: Mobile-friendly bottom drawer featuring a rule-by-rule policy compliance checklist, risk chip, and official `@paypal/react-paypal-js` Smart Buttons.
+6. **Buyer ↔ Merchant Autonomous Negotiation**: Multi-round concession game between buyer and merchant agents. Enforces strict buyer ceilings and secret server-side merchant reserve floors.
+7. **PayPal Orders v2 & Webhook Verification**: Idempotent order creation (`PayPal-Request-Id`), capture tracking, and authoritative signature verification via PayPal's REST API.
+8. **Verifiable Trust Timeline**: Real-time event stream (`/api/timeline/stream`) tracking every decision node with inspectable raw JSON evidence.
+9. **Dual Operation Modes**: Connects live to PayPal Sandbox, with a deterministic zero-key `DEMO_MODE=true` offline fallback and webhook simulator.
 
 ---
 
@@ -26,35 +61,36 @@ $$\text{\bf AI Proposes} \longrightarrow \text{\bf Policy Engine Decides} \longr
 
 ```mermaid
 flowchart TD
-    User([👤 User / Human]) -->|Natural Language Intent| Frontend[🖥️ Next.js 16 Web App]
-    Frontend -->|POST /intents| Backend[⚙️ NestJS 12 API]
+    User([👤 User / Procurement Officer]) -->|Goal / Prompt| Web[🖥️ Next.js 16 Web App]
+    Web -->|Rewrite Proxy /api/*| API[⚙️ NestJS 12 Gateway]
     
-    subgraph AI Planning & Policy Gating
-        Backend -->|Prompt Sanitization| LLM[🧠 Intent Parser / LLM]
-        LLM -->|Zod-Validated Intent| Catalog[(📦 Fictional Product Catalog)]
-        Catalog -->|Authoritative Prices| PolicyEngine{🛡️ Deterministic Policy Engine}
-        PolicyEngine -->|Currency, Caps, Velocity| RiskEngine{⚖️ Pure Risk Scoring Engine}
-        RiskEngine -->|Audit Log| ActivityLedger[(📜 Agent Activity Trail)]
+    subgraph Intelligence ["🧠 Stochastic Intelligence (Advisory Only)"]
+        API --> IntentParser[Intent Parser]
+        IntentParser --> CatalogEngine[Catalog Ranking & Tradeoffs]
+        CatalogEngine --> Negotiation[Multi-Agent Negotiation]
     end
-    
-    subgraph Authorization Boundary
-        PolicyEngine -->|Mode: ASK_EVERY_TIME or Exceeds Threshold| ApprovalQueue[⏳ Pending Approval Queue]
-        ApprovalQueue -->|Explicit Decision| User
-        PolicyEngine -->|Mode: AUTO_WITHIN_LIMITS & Risk LOW| AutoApproved[✅ Auto-Approved Plan]
+
+    subgraph Governance ["🛡️ Deterministic Governance (Strict Execution Guard)"]
+        CatalogEngine --> PolicyEngine{Policy Engine\nHard Limits}
+        PolicyEngine --> RiskGate{Risk Gate\nMulti-Signal 0-100}
+        RiskGate -- "Blocked by Budget" --> Replan[Auto-Replan Loop\nMax 2 Iterations]
+        Replan --> CatalogEngine
+        PolicyEngine -- "Require Approval" --> ApprovalSheet[Interactive Approval Sheet]
     end
-    
-    subgraph Execution & Settlement
-        User -.->|Approve| AutoApproved
-        AutoApproved -->|POST /payments/create-order| PayPalAPI[💳 PayPal Orders v2 API]
-        PayPalAPI -->|ORDER_CREATED| UserModal[🔐 PayPal Sandbox Approval]
-        UserModal -->|POST /payments/:id/capture| CaptureAPI[💰 PayPal Capture v2 API]
-        PayPalAPI -.->|Async Webhook| WebhookHandler[🪝 PayPal Webhook Receiver]
+
+    subgraph Payments ["💳 Cryptographic PayPal Rails"]
+        ApprovalSheet -->|User Authorized| PayClient[PayPal Client v2]
+        PayClient -->|POST /v2/checkout/orders| PayPalSandbox[(PayPal Sandbox API)]
+        PayPalSandbox -->|Client Approval| SmartButtons[PayPal Smart Buttons]
+        SmartButtons -->|Capture| PayClient
+        PayPalSandbox -.->|Signed Webhook| WebhookReceiver[Webhook Controller]
+        WebhookReceiver -->|Verify Signature| PayPalSandbox
     end
-    
-    subgraph Tamper-Proof Audit
-        CaptureAPI -->|PAYMENT_CAPTURED| ImmutableLedger[(🔒 PostgreSQL Immutable Ledger)]
-        WebhookHandler -->|Idempotent Settle| ImmutableLedger
-        ImmutableLedger -.->|DB Trigger: No UPDATE/DELETE| Blocked[🚫 PG Trigger Exception]
+
+    subgraph Ledger ["🔒 Tamper-Proof Audit"]
+        WebhookReceiver -->|Idempotent Settle| TxLedger[(PostgreSQL Immutable Ledger)]
+        TxLedger --> SSE[SSE Broadcast]
+        SSE -->|Real-Time Append| Web
     end
 ```
 
@@ -62,170 +98,184 @@ flowchart TD
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology | Key Highlights |
+| Component | Technology | Rationale |
 |---|---|---|
-| **Monorepo** | pnpm 12 + Turborepo 2 | Co-located `apps/api`, `apps/web`, shared caching & scripts |
-| **Backend API** | NestJS 12 + TypeScript (ESM) | Modular domain architecture, Zod validation, `@prisma/adapter-pg` |
-| **Database & ORM** | PostgreSQL 18 + Prisma 7 | Custom migrations, database triggers, 15 seeded fictional products |
-| **Authentication** | Better Auth | Session cookies, secure registration, 1-Click Demo login |
-| **Frontend** | Next.js 16 (App Router) + React 19 | Turbopack, Tailwind CSS 4, Lucide icons, responsive layout |
-| **Payment Gateway** | PayPal REST API (Orders v2) | Sandbox integration, idempotency keys, webhook signature verification |
-| **Code Quality** | Vitest 4 + Oxlint + ESLint 9 | 100% passing unit & e2e test suite, type-aware linting |
+| **Frontend** | Next.js 16 (App Router), React 19, Tailwind CSS v4 | Server Components, Proxy route protection, zero-CORS rewrites |
+| **UI Primitives** | Radix UI, Framer Motion, Lucide Icons, Sonner | Premium dark navy theme, smooth physics, accessible keyboard controls |
+| **Data Grids & Charts** | AG Grid Community v36, Recharts | High-performance sortable transaction ledgers and spend charts |
+| **Backend Gateway** | NestJS 12, TypeScript (ESM) | Modular micro-architecture, dependency injection, strict validation |
+| **Database & ORM** | PostgreSQL 16+, Prisma 7, `@prisma/adapter-pg` | Relational consistency, double-entry ledgers, unique event constraints |
+| **Authentication** | Better Auth | Secure session cookies, route protection, 1-Click Demo login |
+| **Payment Rails** | PayPal Orders v2 REST API + Webhooks | Idempotent order creation, Smart Buttons, cryptographic verification |
+| **Validation & Testing** | Zod 4, Vitest 4, Playwright | End-to-end schema validation, 402 passing unit tests, smoke tests |
 
 ---
 
-## 🚀 Quickstart Guide
+## 💳 How PayPal is Used
 
-### 1. Prerequisites
-- **Node.js**: v20+ (Node.js 24 recommended via `mise` or `nvm`)
+PayPilot implements the modern PayPal Orders v2 and Webhooks architecture:
+
+1. **Idempotent Order Creation (`POST /v2/checkout/orders`)**:
+   - Initiated only after a `PurchasePlan` transitions to `APPROVED` and re-verifies policy constraints.
+   - Generates structured `purchase_units` with full itemized breakdown (subtotal, tax, shipping, discount, item descriptions).
+   - Transmits a unique `PayPal-Request-Id` derived from `hash(planId + approvalId)` to guarantee zero duplicate charges on network retries.
+2. **Client-Side Authorization (`@paypal/react-paypal-js`)**:
+   - PayPal Smart Buttons render dynamically inside the Approval Sheet once the user signs off on the policy checklist.
+3. **Capture Execution (`POST /v2/checkout/orders/{id}/capture`)**:
+   - Validates that the captured PayPal order ID matches the pending internal payment record. Transitions payment to `CAPTURE_PENDING`.
+4. **Cryptographic Webhook Settlement (`POST /webhooks/paypal`)**:
+   - PayPilot treats PayPal Webhooks as the **sole authoritative settlement trigger**.
+   - Validates webhook authenticity using PayPal's `/v1/notifications/verify-webhook-signature` endpoint.
+   - Dedupes incoming `event.id` values against a unique database table to safely ignore duplicate transmissions.
+
+---
+
+## 🤖 How AI is Used
+
+PayPilot explicitly isolates generative intelligence to advisory roles:
+
+1. **Intent Parsing**: Converts ambiguous natural language into structured JSON constraints (category, budget ceilings, priority weights).
+2. **Catalog Tradeoff Generation**: Compares primary candidates against alternatives, extracting spec trade-offs (e.g., *"- $59.01, 24\" QHD instead of 27\" 4K"*).
+3. **Multi-Agent Negotiation**: Simulates dynamic price discovery between a Buyer Agent and a Merchant Agent. The code enforces unbreachable buyer ceilings and secret merchant reserve floors, falling back to deterministic concession rules if LLM output exceeds bounds.
+
+---
+
+## 🔒 Security Model
+
+- **Prompt Injection Immunity**: Governance policies (`maxTransactionAmount`, `dailySpendingLimit`) are stored in PostgreSQL and evaluated by pure TypeScript functions. An LLM prompt cannot alter spending limits.
+- **Server-Side Floor Confidentiality**: The merchant's break-even reserve price is strictly isolated on the server and never sent to the buyer LLM or client bundle.
+- **Secret Isolation**: PayPal Client Secrets and Better Auth keys are never exposed to the frontend. All client API communication passes through Next.js server rewrites.
+- **Replay Protection**: Webhook event IDs are constrained by unique database indexes. Replayed events return HTTP 200 without executing secondary ledger mutations.
+
+---
+
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- **Node.js**: v20+ (Node.js 24 recommended)
 - **Package Manager**: `pnpm` (`npm install -g pnpm`)
-- **Database**: PostgreSQL instance running on `localhost:5432`
+- **Docker**: For running local PostgreSQL (`docker compose up -d`)
 
-### 2. Environment Configuration
-Copy environment files from provided templates:
+### 1. Clone & Configure Environment
 ```bash
+git clone https://github.com/your-username/paypilot.git
+cd paypilot
+
+# Copy root environment template
 cp .env.example .env
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
 ```
 
-Ensure `apps/api/.env` has your PostgreSQL connection string:
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/paypilot"
-PORT=4000
-BETTER_AUTH_SECRET="paypilot_super_secret_sandbox_key_2026_dev"
-BETTER_AUTH_URL="http://localhost:4000"
-DEMO_MODE=true
-PAYPAL_MODE=sandbox
-PAYPAL_API_BASE_URL=https://api-m.sandbox.paypal.com
-```
-
-### 3. Database Migration & Fictional Catalog Seed
-Run database migrations (including the append-only ledger trigger) and seed the catalog:
+### 2. Install Dependencies
 ```bash
-# Apply Prisma migrations
-pnpm --filter api prisma migrate deploy
-
-# Seed 15 fictional products (AuraSound, SonicBuds, NovaView, ErgoFlow, etc.)
-pnpm --filter api prisma db seed
+pnpm install
 ```
 
-### 4. Build and Run
-Start both frontend and backend concurrently:
+### 3. Start Database & Seed Catalog
 ```bash
+# Start local PostgreSQL container
+pnpm db:up
+
+# Run Prisma database migrations
+pnpm db:migrate
+
+# Seed 17 fictional catalog items and initial test users
+pnpm db:seed
+```
+
+### 4. Run Development Servers
+```bash
+# Starts both NestJS API (port 4000) and Next.js Web (port 3000)
 pnpm dev
 ```
-Or run individual apps:
-- **Backend API**: `pnpm --filter api start:dev` (runs on `http://localhost:4000`)
-- **Frontend Web**: `pnpm --filter web dev` (runs on `http://localhost:3000`)
-
 Open **`http://localhost:3000`** in your browser.
 
 ---
 
-## 🧪 Testing & Verification
+## 🎮 Demo Credentials & Quick Test
 
-Run the entire test suite and typechecks across the monorepo:
+PayPilot includes pre-seeded demo accounts with active policies:
+
+| Account | Email | Password | Role |
+|---|---|---|---|
+| **Demo User** | `demo@paypilot.dev` | `Password123!` | Standard procurement user ($250 cap, Ask Every Time) |
+| **Tester User** | `tester@paypilot.ai` | `Password123!` | Historical user with prior transactions & captured ledger |
+
+> **Tip**: Click the prominent **"Continue as Demo User"** button on the `/welcome` or `/login` screen for 1-click sign-in without typing credentials.
+
+---
+
+## 🌐 PayPal Sandbox Setup & Webhooks
+
+For live testing with real PayPal Sandbox accounts, follow our detailed guide:
+👉 **[Read docs/PAYPAL_SETUP.md](file:///home/nulltrace/Documents/Projects/PayPal%20Hackathon/PayPilot/docs/PAYPAL_SETUP.md)**
+
+### Running Without PayPal Keys (`DEMO_MODE=true`)
+If you don't have PayPal developer credentials handy, leave `DEMO_MODE=true` in `.env`. PayPilot will:
+1. Provide mock PayPal orders and mock capture IDs.
+2. Activate the **Dev Webhook Simulator** on `/payments/[id]`, allowing you to simulate `COMPLETED`, `DENIED`, `REVERSED`, and duplicate webhook events directly from the UI.
+
+---
+
+## 🧪 Running the Test Suite
+
 ```bash
-# Typecheck both packages (tsc --noEmit)
-pnpm typecheck
-
-# Fast type-aware linting (oxlint on backend, eslint on frontend)
-pnpm lint
-
-# Run all 37 Vitest unit tests (state machine, policies, risk, intent parser, payments)
+# Run all 402 unit & state machine tests across packages
 pnpm test
 
-# Run backend end-to-end HTTP tests
-pnpm --filter api test:e2e
+# Run strict TypeScript typecheck (0 errors, no 'any')
+pnpm typecheck
 
-# Run production build
-pnpm build
+# Run lint checks
+pnpm lint
+
+# Run Playwright end-to-end smoke test (Chromium + Mobile 390px)
+cd apps/web && npx playwright test
 ```
 
 ---
 
-## 🎬 Demo Walkthrough Script for Judges
+## 📁 Project Structure
 
-### 1-Click Demo Login
-Click **"Sign In"** in the top navigation and select **"1-Click Demo Login"** (`demo@paypilot.ai` / `password123`). This pre-configures your account with active policies and zero initial spend.
-
----
-
-### Scenario A: Human-in-the-Loop Approval Flow (`ASK_EVERY_TIME`)
-1. Click the **"Policy & Budget"** button in the header. Verify autonomy mode is set to **"Ask Every Time (Manual Approval)"**.
-2. In the Agent Studio, enter natural language intent:
-   > *"Find noise-cancelling headphones under $200"*
-3. Observe the PayPilot agent:
-   - Interprets natural language requirements and extracts category (`Electronics`), budget ceiling (`$200`), and preferences (`noise-cancelling`, `headphones`).
-   - Recommends `ErgoFlow Precision Mouse 3S` or headphones from the catalog.
-   - Computes deterministic spending policies and scores risk (`LOW`, 20/100).
-   - Enters `AWAITING_APPROVAL` status because policy mandates explicit user consent.
-   - Writes 7 explainable activity log steps to the audit trail.
-4. **Alternative Item Swap:** Click the **"Swap Item"** button on an alternative product (e.g. `SonicBuds Pro 2 Wireless Earbuds` at `$189.99`). The total updates instantly with 100% server-side recalculation.
-5. **Approve Plan:** Navigate to the **Approvals** tab or click **"Authorize Plan"**. Plan transitions to `APPROVED`.
-6. **Execute Payment:** Click **"Pay with PayPal Sandbox"**. Order is created via PayPal Orders v2, and captured with an immutable transaction row created.
-
----
-
-### Scenario B: Autonomous Pre-Authorized Flow (`AUTO_WITHIN_LIMITS`)
-1. Open **"Policy & Budget"** modal:
-   - Select **"Auto-Approve Within Limits"**.
-   - Set **Approval Threshold** to `$50.00`.
-   - Set **Max Transaction Limit** to `$100.00`.
-   - Toggle **"Allow Agent Auto-Execution"** to **ON**.
-   - Click **Save Spending Policy**.
-2. In Agent Studio, submit a purchase under the threshold:
-   > *"Find an ambient LED smart bulb under $30"*
-3. Observe autonomous execution:
-   - Matches `LuminaCore Smart Ambient LED Bulb` at `$24.99`.
-   - Policy evaluates: `$24.99 <= $50.00` threshold, within daily & monthly budgets.
-   - Status automatically transitions to `APPROVED` without requiring manual user intervention.
-   - A single click on **"Execute Payment"** completes the transaction.
+```
+paypilot/
+├── apps/
+│   ├── api/                    # NestJS 12 Gateway
+│   │   ├── src/
+│   │   │   ├── agent/          # Procurement planning & catalog ranking
+│   │   │   ├── policy/         # Pure deterministic policy & risk gate
+│   │   │   ├── replan/         # Autonomous budget re-planning engine
+│   │   │   ├── negotiation/    # Multi-agent bargaining protocol
+│   │   │   ├── paypal/         # PayPal Orders v2 REST client
+│   │   │   ├── payments/       # Payment state machine & capture
+│   │   │   ├── webhooks/       # Cryptographic webhook signature verifier
+│   │   │   └── timeline/       # SSE streaming audit ledger
+│   │   └── prisma/             # Schema, migrations, and product seed data
+│   │
+│   └── web/                    # Next.js 16 Frontend (React 19)
+│       ├── src/
+│       │   ├── app/            # App Router pages (9 screens)
+│       │   ├── components/     # UI primitives, live agent panel, approval sheet
+│       │   ├── hooks/          # useEventStream (SSE connection)
+│       │   ├── lib/            # Typed API client, Zod schemas, Better Auth
+│       │   └── proxy.ts        # Next 16 route protection proxy
+│       └── tests/              # Playwright desktop and mobile smoke tests
+│
+├── docs/                       # Architecture, Security, API, and PayPal setup docs
+├── postman/                    # Postman collection & sandbox environment
+├── docker-compose.yml          # Local PostgreSQL container definition
+└── render.yaml                 # Production deployment blueprint
+```
 
 ---
 
-### Scenario C: Deterministic Policy Violation & Guardrail Protection
-1. With Max Transaction Limit set to `$100.00`, submit an intent for an expensive item:
-   > *"Find an air purifier under $200"*
-2. Observe policy gating:
-   - Matches `PureBreeze Smart Room Air Purifier` (`$179.99`).
-   - Deterministic Policy Engine **flags violation**: *"Plan total of $179.99 exceeds maximum per-transaction limit of $100.00."*
-   - Risk score elevates to **HIGH (65/100)**.
-   - Even if forced in DB or UI, backend endpoint `POST /payments/create-order` explicitly blocks payment:
-     ```json
-     {
-       "message": "Cannot initiate payment: purchase plan has unresolved policy violations.",
-       "error": "Bad Request",
-       "statusCode": 400
-     }
-     ```
+## ⚠️ Limitations & Future Work
 
----
-
-### Scenario D: Tamper-Proof Audit & Immutable PostgreSQL Ledger
-1. Navigate to the **Ledger** tab in the UI.
-2. View the settled transactions with capture IDs, timestamps, and PayPal reference IDs.
-3. Attempt to maliciously mutate or delete a transaction row via PostgreSQL CLI:
-   ```bash
-   psql "postgresql://postgres:postgres@localhost:5432/paypilot" -c "DELETE FROM transaction;"
-   ```
-4. Observe the database trigger preventing tamper:
-   ```
-   ERROR: Transaction ledger records are immutable and append-only. Modification or deletion is strictly prohibited
-   ```
-
----
-
-## 🔒 Security & Privacy Architecture
-
-- **Prompt Injection Defense:** Strict input sanitization strips control characters and validates length; structured outputs are validated via Zod schemas.
-- **Principle of Least Privilege:** LLM has zero knowledge of PayPal client secrets, Better Auth tokens, or customer bank details.
-- **Multi-Tenant Ownership:** All database queries are scoped by `userId` extracted directly from verified Better Auth session tokens.
-- **Safe Webhook Handling:** Webhook payloads are verified and deduplicated against the unique `WebhookEvent.eventId` in Postgres to prevent replay attacks.
-- **Fictional Trademarks:** Seed data uses 100% original, fictional branding (e.g. *AuraSound, SonicBuds, NovaView, PortMatrix, KeyFlow*).
+PayPilot was built as an exploration of autonomous agent governance for the PayPal AI Hackathon:
+- **Sandbox Only**: Built and validated strictly against PayPal Sandbox. It is **not** audited or certified for unmonitored production money movement.
+- **Simulated Catalog**: Products are currently sourced from an internal seeded catalog rather than live third-party merchant APIs.
+- **Single-Merchant Carts**: Multi-item plans currently assume fulfillment through a single merchant checkout session. Future work includes multi-merchant split orders and automated recurring subscription renegotiation.
 
 ---
 
 ## 📄 License
-MIT License. Created for the PayPal AI Hackathon 2026.
+This project is open-source under the [MIT License](LICENSE).

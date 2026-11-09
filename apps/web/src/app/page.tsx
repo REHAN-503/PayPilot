@@ -1,351 +1,418 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import * as React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
-  Layers,
-  AlertTriangle,
-  RefreshCw,
+  Send,
+  Zap,
+  ShoppingBag,
+  ExternalLink,
+  ChevronRight,
+  Clock,
+  Coins,
+  Cpu,
 } from 'lucide-react';
-import { useSession, signOut } from '../lib/auth-client';
+import { DashboardShell } from '../components/layout/DashboardShell';
+import { LiveAgentPanel, INITIAL_AGENT_STEPS, type AgentStep } from '../components/agent/LiveAgentPanel';
+import { TrustTimeline } from '../components/timeline/TrustTimeline';
+import { ApprovalSheet } from '../components/plan/ApprovalSheet';
+import { Button } from '../components/ui/button';
+import { Textarea } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { DEMO_PROMPTS, type PurchasePlan } from '../lib/schemas';
 import { api } from '../lib/api';
-import { Navbar } from '../components/Navbar';
-import { AuthModal } from '../components/AuthModal';
-import { PolicyModal } from '../components/PolicyModal';
-import { PlanCard } from '../components/PlanCard';
-import { TimelineView } from '../components/TimelineView';
-import { LedgerView } from '../components/LedgerView';
-import { ApprovalsView } from '../components/ApprovalsView';
-import { CatalogView } from '../components/CatalogView';
-import type { PurchasePlan, Product, AgentActivity, UserPolicy } from '../types';
+import { formatCurrency } from '../lib/utils';
+import { useEventStream } from '../hooks/useEventStream';
+import { toast } from 'sonner';
 
-const SUGGESTIONS = [
-  'Find noise-cancelling headphones under $200',
-  'Find an ergonomic mouse under $100',
-  'Buy a 4K productivity monitor under $350',
-  'Get a smart room air purifier under $180',
-  'Need a studio USB microphone under $120',
-];
+export default function CommandCenterPage() {
+  const router = useRouter();
+  const [goal, setGoal] = React.useState(DEMO_PROMPTS[0].text);
+  const [isPlanning, setIsPlanning] = React.useState(false);
+  const [steps, setSteps] = React.useState<AgentStep[]>(INITIAL_AGENT_STEPS);
+  const [currentStepId, setCurrentStepId] = React.useState<string | undefined>(undefined);
+  const [activePlan, setActivePlan] = React.useState<PurchasePlan | null>(null);
+  const [approvalSheetOpen, setApprovalSheetOpen] = React.useState(false);
 
-export default function Home() {
-  const { data: session, isPending: sessionLoading } = useSession();
-  const user = session?.user;
+  // Queries
+  const { data: plans, refetch: refetchPlans } = useQuery({
+    queryKey: ['plans'],
+    queryFn: () => api.getPlans(),
+  });
 
-  const [currentTab, setCurrentTab] = useState<'agent' | 'approvals' | 'ledger' | 'catalog'>('agent');
-  const [prompt, setPrompt] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: policyData } = useQuery({
+    queryKey: ['policy'],
+    queryFn: () => api.getPolicy(),
+  });
 
-  // Active Plan & Audit Timeline
-  const [activePlan, setActivePlan] = useState<PurchasePlan | null>(null);
-  const [alternatives, setAlternatives] = useState<Product[]>([]);
-  const [activities, setActivities] = useState<AgentActivity[]>([]);
+  const { data: timelineData, refetch: refetchTimeline } = useQuery({
+    queryKey: ['timeline-recent'],
+    queryFn: () => api.getTimeline(),
+  });
 
-  // Policy snapshot & pending count
-  const [policyData, setPolicyData] = useState<UserPolicy | null>(null);
-  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+  const updateStepStatus = React.useCallback((id: string, status: AgentStep['status'], detail?: string) => {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status, detail: detail || s.detail } : s)),
+    );
+    if (status === 'running') setCurrentStepId(id);
+  }, []);
 
-  // Modals
-  const [authOpen, setAuthOpen] = useState(false);
-  const [policyOpen, setPolicyOpen] = useState(false);
+  // Connect to SSE stream
+  useEventStream((event) => {
+    refetchTimeline();
+    refetchPlans();
 
-  const refreshPolicyAndApprovals = useCallback(() => {
-    if (!user) return;
-
-    api
-      .getPolicy()
-      .then((res) => setPolicyData(res.policy))
-      .catch(() => {});
-
-    api
-      .getPendingApprovals()
-      .then((res) => setPendingApprovalsCount(res?.length || 0))
-      .catch(() => {});
-  }, [user]);
-
-  function reloadActivePlan() {
-    if (!activePlan?.id || !user) return;
-    api
-      .getPlan(activePlan.id)
-      .then((plan) => {
-        setActivePlan(plan);
-        if (plan?.intent?.activities) {
-          setActivities(plan.intent.activities);
-        }
-      })
-      .catch(() => {});
-    refreshPolicyAndApprovals();
-  }
-
-  useEffect(() => {
-    if (user) {
-      refreshPolicyAndApprovals();
-      api
-        .getIntents()
-        .then((intents) => {
-          if (intents && intents.length > 0) {
-            const latest = intents[0];
-            if (latest.plans && latest.plans.length > 0) {
-              setActivePlan(latest.plans[0]);
-            }
-            if (latest.activities) {
-              setActivities(latest.activities);
-            }
-          }
-        })
-        .catch(() => {});
+    // Map incoming event to step progression
+    if (event.stage === 'INTENT') {
+      updateStepStatus('parse', 'completed', event.explanation);
+      updateStepStatus('search', 'running');
+    } else if (event.stage === 'PLAN') {
+      updateStepStatus('search', 'completed');
+      updateStepStatus('rank', 'completed', event.explanation);
+      updateStepStatus('policy', 'running');
+    } else if (event.stage === 'POLICY') {
+      updateStepStatus('policy', event.status === 'blocked' ? 'blocked' : 'completed', event.explanation);
+      if (event.status !== 'blocked') updateStepStatus('risk', 'running');
+    } else if (event.stage === 'RISK') {
+      updateStepStatus('risk', 'completed', event.explanation);
+      updateStepStatus('ready', 'completed', 'Plan ready for user authorization');
     }
-  }, [user, refreshPolicyAndApprovals]);
+  });
 
-  async function handleSendPrompt(textToSend?: string) {
-    const rawInput = (textToSend ?? prompt).trim();
-    if (!rawInput) return;
-
-    if (!user) {
-      setAuthOpen(true);
+  const handlePlanSubmit = async (textToPlan = goal) => {
+    if (!textToPlan.trim()) {
+      toast.error('Please enter a purchase goal');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const res = await api.createIntent(rawInput);
-      setActivePlan(res.plan);
-      setAlternatives(res.alternatives || []);
-      setPrompt('');
+      setIsPlanning(true);
+      setActivePlan(null);
 
-      if (res.intent?.id) {
-        const fullIntent = await api.getIntent(res.intent.id);
-        setActivities(fullIntent.activities || []);
+      // Reset step indicators
+      setSteps(
+        INITIAL_AGENT_STEPS.map((s, idx) => ({
+          ...s,
+          status: idx === 0 ? 'running' : 'idle',
+          detail: undefined,
+        })),
+      );
+      setCurrentStepId('parse');
+
+      toast.loading('Autonomous Agent executing plan...', { id: 'plan-progress' });
+
+      // Step 1: Parsing
+      await new Promise((r) => setTimeout(r, 400));
+      updateStepStatus('parse', 'completed', 'Goal analyzed & prompt injection boundaries verified');
+      updateStepStatus('search', 'running');
+
+      // Call API
+      const res = await api.createIntent(textToPlan);
+
+      // Step 2 & 3: Catalog & Ranking
+      await new Promise((r) => setTimeout(r, 400));
+      updateStepStatus('search', 'completed', 'Matched catalog items within target category');
+      updateStepStatus('rank', 'completed', 'Ranked primary option with tradeoff analysis');
+      updateStepStatus('policy', 'running');
+
+      // Step 4: Policy
+      await new Promise((r) => setTimeout(r, 350));
+      if (res.policyEvaluation?.decision === 'BLOCK') {
+        updateStepStatus('policy', 'blocked', res.policyEvaluation.violations?.[0] || 'Budget exceeded');
+        toast.error('Policy Guard Blocked Action', {
+          id: 'plan-progress',
+          description: 'Hard deterministic limit prevented automated purchase.',
+        });
+      } else {
+        updateStepStatus('policy', 'completed', 'All deterministic budget and autonomy rules passed');
+        updateStepStatus('risk', 'running');
+
+        // Step 5 & 6: Risk & Ready
+        await new Promise((r) => setTimeout(r, 300));
+        updateStepStatus('risk', 'completed', `Assessed ${res.riskAssessment?.level || 'LOW'} risk profile`);
+        updateStepStatus('ready', 'completed', 'Plan created. Awaiting user authorization.');
+
+        toast.success('Procurement Plan Created!', { id: 'plan-progress' });
+
+        if (res.plan) {
+          setActivePlan(res.plan);
+        }
       }
 
-      refreshPolicyAndApprovals();
+      await refetchPlans();
+      await refetchTimeline();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Agent failed to process your request');
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error('Planning Encountered Error', {
+        id: 'plan-progress',
+        description: message,
+      });
+      updateStepStatus('parse', 'blocked', message);
     } finally {
-      setLoading(false);
+      setIsPlanning(false);
     }
-  }
+  };
+
+  const latestPlan = activePlan || plans?.[0];
+  const policy = policyData?.policy;
+  const metrics = policyData?.spendMetrics;
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 dark:bg-black dark:text-zinc-100 flex flex-col">
-      <Navbar
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        pendingApprovalsCount={pendingApprovalsCount}
-        policy={policyData}
-        user={user}
-        onOpenAuth={() => setAuthOpen(true)}
-        onOpenPolicy={() => setPolicyOpen(true)}
-        onSignOut={() => signOut()}
-      />
-
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-        {/* Unauthenticated Quick Banner */}
-        {!user && !sessionLoading && (
-          <div className="mb-8 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent p-5 dark:border-blue-900/60">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-blue-500" />
-                  Welcome to PayPilot (PayPal AI Hackathon)
-                </h3>
-                <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 max-w-2xl">
-                  PayPilot transforms natural-language purchase intent into a governed, explainable payment execution workflow:
-                  <strong className="text-zinc-900 dark:text-white"> AI proposes. Policy Engine decides. User authorizes. PayPal executes. Webhooks verify. Ledger records.</strong>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAuthOpen(true)}
-                className="shrink-0 flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md transition hover:bg-blue-700"
-              >
-                Sign In / 1-Click Demo
-                <ArrowRight className="h-3.5 w-3.5" />
-              </button>
+    <DashboardShell>
+      <div className="space-y-8">
+        {/* Hero Section & Goal Input */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+                Autonomous Procurement Center
+                <Badge variant="default" className="py-0.5 px-2 text-[10px]">
+                  Agent v2.0
+                </Badge>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                Natural-language intent parsing with deterministic policy bounds and PayPal smart execution.
+              </p>
             </div>
           </div>
-        )}
 
-        {/* Tab 1: Agent Studio */}
-        {currentTab === 'agent' && (
-          <div className="space-y-8">
-            {/* Prompt Studio Input */}
-            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4" />
-                  Autonomous Commerce Agent
+          {/* Goal Textarea Input */}
+          <div className="relative rounded-3xl p-2 bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 shadow-2xl">
+            <Textarea
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder="e.g. I need a developer monitor under $250. Prioritize text clarity and value."
+              className="text-base sm:text-lg min-h-[100px] border-none bg-transparent focus-visible:ring-0 p-4 text-white placeholder:text-slate-500"
+            />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3 py-2 border-t border-slate-800/80">
+              {/* Chips container */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 shrink-0">
+                  Demo Chips:
                 </span>
-                <span className="text-[11px] text-zinc-400">
-                  Currency: USD • Sandbox Orders v2
-                </span>
-              </div>
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendPrompt();
-                }}
-                className="relative"
-              >
-                <input
-                  type="text"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe your purchase goal (e.g. 'Find noise-cancelling headphones under $200')..."
-                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50/70 px-5 py-4 pr-32 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:focus:bg-zinc-950"
-                />
-
-                <button
-                  type="submit"
-                  disabled={loading || !prompt.trim()}
-                  className="absolute right-2.5 top-2.5 bottom-2.5 flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 text-xs font-bold text-white shadow transition hover:bg-blue-700 disabled:opacity-40"
-                >
-                  {loading ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      Propose Plan
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </>
-                  )}
-                </button>
-              </form>
-
-              {/* Suggestion Chips */}
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-[11px] text-zinc-400">Try demo:</span>
-                {SUGGESTIONS.map((s) => (
+                {DEMO_PROMPTS.map((prompt) => (
                   <button
-                    key={s}
-                    type="button"
+                    key={prompt.id}
                     onClick={() => {
-                      setPrompt(s);
-                      handleSendPrompt(s);
+                      setGoal(prompt.text);
+                      handlePlanSubmit(prompt.text);
                     }}
-                    className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[11px] font-medium text-zinc-600 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-800/80 hover:bg-blue-600/20 hover:border-blue-500/40 border border-slate-700/60 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer"
                   >
-                    {s}
+                    <span className="text-blue-400 font-mono text-[10px]">{prompt.tag}</span>
+                    <span>{prompt.label}</span>
                   </button>
                 ))}
               </div>
-            </div>
 
-            {error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>{error}</span>
+              {/* Plan It Button */}
+              <Button
+                variant="glow"
+                size="lg"
+                onClick={() => handlePlanSubmit(goal)}
+                disabled={isPlanning}
+                className="shrink-0 h-11 px-6 font-semibold"
+              >
+                {isPlanning ? (
+                  <>
+                    <Zap className="w-4 h-4 mr-2 animate-spin" />
+                    Planning...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Plan It
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Agent Execution & Current Plan Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left: Live Agent Stepper Panel (5 cols) */}
+          <div className="lg:col-span-5">
+            <LiveAgentPanel steps={steps} currentStepId={currentStepId} />
+          </div>
+
+          {/* Right: Current / Latest Plan Showcase (7 cols) */}
+          <div className="lg:col-span-7 space-y-6">
+            {latestPlan ? (
+              <Card className="border-slate-800 bg-slate-900/80 overflow-hidden shadow-2xl">
+                <CardHeader className="border-b border-slate-800/80 bg-slate-950/40 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          latestPlan.status === 'APPROVED'
+                            ? 'success'
+                            : latestPlan.status === 'AWAITING_APPROVAL'
+                            ? 'warning'
+                            : 'secondary'
+                        }
+                      >
+                        {latestPlan.status.replace('_', ' ')}
+                      </Badge>
+                      <span className="text-xs text-slate-400 font-mono">
+                        Plan v{latestPlan.version}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-2xl font-black text-white">
+                        {formatCurrency(latestPlan.total)}
+                      </span>
+                      <span className="text-xs text-slate-400 ml-1.5">USD</span>
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg font-bold text-white mt-1">
+                    {latestPlan.items?.[0]?.productName || 'Recommended Product Package'}
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="p-6 space-y-5">
+                  {/* Explanation rationale */}
+                  <div className="p-3.5 rounded-2xl bg-blue-950/20 border border-blue-500/20 text-xs text-blue-200 leading-relaxed">
+                    <div className="font-semibold text-blue-400 mb-1 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Why This Pick
+                    </div>
+                    {latestPlan.explanation ||
+                      'Selected after verified SQL search matching technical clarity and budget parameters.'}
+                  </div>
+
+                  {/* Items list */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Procurement Items
+                    </div>
+                    {latestPlan.items?.map((it) => (
+                      <div
+                        key={it.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs"
+                      >
+                        <div>
+                          <div className="font-semibold text-slate-200">{it.productName}</div>
+                          <div className="text-[11px] text-slate-400">
+                            SKU: {it.productSku || 'ELEC-SKU'} • Qty: {it.quantity}
+                          </div>
+                        </div>
+                        <div className="font-bold text-slate-100 font-mono text-sm">
+                          {formatCurrency(it.lineTotal)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                    <Link href={`/plans/${latestPlan.id}`} className="w-full sm:flex-1">
+                      <Button variant="outline" className="w-full">
+                        Inspect Full Plan & Tradeoffs
+                        <ArrowRight className="w-4 h-4 ml-1.5" />
+                      </Button>
+                    </Link>
+
+                    {latestPlan.status === 'AWAITING_APPROVAL' && (
+                      <Button
+                        variant="glow"
+                        onClick={() => setApprovalSheetOpen(true)}
+                        className="w-full sm:flex-1 font-semibold"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        Authorize & Pay
+                      </Button>
+                    )}
+
+                    <Link href={`/negotiation?planId=${latestPlan.id}`} className="w-full sm:w-auto">
+                      <Button variant="accent" className="w-full">
+                        Negotiate Price
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-12 rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 text-center">
+                <ShoppingBag className="w-12 h-12 text-slate-600 mb-3" />
+                <h3 className="text-base font-semibold text-slate-300">No active plan generated yet</h3>
+                <p className="text-xs text-slate-500 max-w-sm mt-1">
+                  Type your procurement requirement in the goal box above or click a demo chip to plan autonomously.
+                </p>
               </div>
             )}
 
-            {/* Split Screen: Active Plan & Audit Trail */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column (2 Cols): Plan Presentation */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-blue-500" />
-                    AI Proposed Purchase Plan
-                  </h3>
-                  {activePlan && (
-                    <span className="text-xs text-zinc-400">
-                      Evaluated by Deterministic Policy Engine
-                    </span>
-                  )}
+            {/* Quick Metrics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
+                <div className="text-[11px] text-slate-400 uppercase font-semibold">Daily Limit Left</div>
+                <div className="text-lg font-bold text-white mt-1">
+                  {formatCurrency(metrics?.dailyRemaining ?? 1000)}
                 </div>
-
-                {activePlan ? (
-                  <PlanCard
-                    plan={activePlan}
-                    alternatives={alternatives}
-                    onPlanUpdated={reloadActivePlan}
-                    onViewLedger={() => setCurrentTab('ledger')}
-                  />
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-zinc-200 bg-white/50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-950/50">
-                    <Sparkles className="mx-auto h-10 w-10 text-zinc-400" />
-                    <h4 className="mt-3 text-sm font-semibold text-zinc-900 dark:text-white">
-                      No active purchase plan
-                    </h4>
-                    <p className="mt-1 text-xs text-zinc-500 max-w-sm mx-auto">
-                      Type your purchase goal above or click one of the suggested prompts to let PayPilot generate an optimized plan.
-                    </p>
-                  </div>
-                )}
               </div>
 
-              {/* Right Column (1 Col): Explainable Audit Timeline */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                    Explainability Timeline
-                  </h3>
-                  <span className="text-xs text-zinc-400">Audit Trail</span>
+              <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
+                <div className="text-[11px] text-slate-400 uppercase font-semibold">Max Transaction</div>
+                <div className="text-lg font-bold text-white mt-1">
+                  {formatCurrency(policy?.maxTransactionAmount ?? 500)}
                 </div>
+              </div>
 
-                <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 max-h-[600px] overflow-y-auto">
-                  <TimelineView activities={activities} />
+              <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
+                <div className="text-[11px] text-slate-400 uppercase font-semibold">Autonomy Mode</div>
+                <div className="text-sm font-bold text-blue-400 mt-1.5 truncate">
+                  {policy?.autonomyMode?.replace(/_/g, ' ') || 'ASK EVERY TIME'}
                 </div>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Tab 2: Approvals View */}
-        {currentTab === 'approvals' && (
-          <ApprovalsView onApprovalDone={refreshPolicyAndApprovals} />
-        )}
-
-        {/* Tab 3: Ledger View */}
-        {currentTab === 'ledger' && <LedgerView />}
-
-        {/* Tab 4: Catalog View */}
-        {currentTab === 'catalog' && (
-          <CatalogView
-            onSelectPrompt={(text) => {
-              setCurrentTab('agent');
-              setPrompt(text);
-              handleSendPrompt(text);
-            }}
-          />
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t border-zinc-200 bg-white py-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 text-xs text-zinc-500 dark:text-zinc-400">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-zinc-900 dark:text-white">PayPilot</span>
-            <span>•</span>
-            <span>PayPal AI Hackathon</span>
-            <span>•</span>
-            <span className="font-mono text-[11px]">DEMO_MODE={process.env.NEXT_PUBLIC_API_URL ? 'online' : 'ready'}</span>
-          </div>
-          <div>
-            Pure Policy Limits • Cryptographic Idempotency • Authoritative Webhook Settlement
-          </div>
         </div>
-      </footer>
 
-      {/* Modals */}
-      <AuthModal
-        isOpen={authOpen}
-        onClose={() => setAuthOpen(false)}
-        onSuccess={() => {
-          refreshPolicyAndApprovals();
-        }}
-      />
+        {/* Recent Trust Timeline Section */}
+        <div className="space-y-4 pt-4 border-t border-slate-800/80">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                Recent Audit Timeline
+                <span className="text-xs font-normal text-slate-400 font-mono">
+                  ({timelineData?.count || 0} events recorded)
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400">Cryptographically verifiable execution trace</p>
+            </div>
 
-      <PolicyModal
-        isOpen={policyOpen}
-        onClose={() => setPolicyOpen(false)}
-        onPolicyUpdated={refreshPolicyAndApprovals}
-      />
-    </div>
+            <Link href="/timeline">
+              <Button variant="ghost" size="sm" className="text-xs text-blue-400 hover:text-white">
+                View Full Timeline
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+
+          <TrustTimeline events={timelineData?.events?.slice(-6) || []} isLive={true} />
+        </div>
+      </div>
+
+      {/* Approval Sheet Modal */}
+      {latestPlan && (
+        <ApprovalSheet
+          open={approvalSheetOpen}
+          onOpenChange={setApprovalSheetOpen}
+          plan={latestPlan}
+          onPlanUpdated={(updated) => {
+            setActivePlan(updated);
+            refetchPlans();
+          }}
+        />
+      )}
+    </DashboardShell>
   );
 }

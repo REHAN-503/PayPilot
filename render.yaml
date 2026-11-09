@@ -1,0 +1,61 @@
+services:
+  # Backend API Gateway (NestJS)
+  - type: web
+    name: paypilot-api
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: pnpm install && pnpm --filter api build
+    startCommand: pnpm --filter api start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: paypilot-postgres
+          property: connectionString
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_URL
+        value: https://paypilot-api.onrender.com
+      - key: DEMO_MODE
+        value: "true"
+      - key: PAYPAL_MODE
+        value: sandbox
+      - key: PAYPAL_API_BASE_URL
+        value: https://api-m.sandbox.paypal.com
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+
+  # Frontend Web UI (Next.js 16)
+  - type: web
+    name: paypilot-web
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: pnpm install && pnpm --filter web build
+    startCommand: pnpm --filter web start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        value: https://paypilot-api.onrender.com
+      - key: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+        sync: false
+
+databases:
+  - name: paypilot-postgres
+    plan: starter
+    region: oregon
+    databaseName: paypilot
+    user: paypilot
+
