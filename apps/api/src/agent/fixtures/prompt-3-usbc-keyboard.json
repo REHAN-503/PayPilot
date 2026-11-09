@@ -1,0 +1,35 @@
+{
+  "promptKey": "prompt-3",
+  "rawInput": "Buy a USB-C hub and a keyboard under $120 total",
+  "normalized": "buy a usbc hub and a keyboard under 120 total",
+  "intent": {
+    "goal": "Buy a USB-C hub and a keyboard under $120 total",
+    "category": "Accessories",
+    "minBudget": null,
+    "maxBudget": 120,
+    "mustHave": ["USB-C hub", "keyboard"],
+    "niceToHave": ["compact form factor", "multiport connectivity"],
+    "useCase": "Clean desk workstation setup and multi-device peripheral connectivity",
+    "urgency": "NORMAL",
+    "quantity": 1,
+    "riskNotes": []
+  },
+  "planRanking": {
+    "pickedProductSku": "ACC-002",
+    "alternatives": [
+      {
+        "productSku": "ACC-003",
+        "reason": "PortMatrix 8-in-1 Multiport USB-C Hub ($49.99) companion item for peripheral expansion."
+      },
+      {
+        "productSku": "ACC-001",
+        "reason": "AeroType Slim Wireless Keyboard ($99.00) premium aluminum scissor-switch alternative."
+      }
+    ],
+    "reasoning": "Selected KeyFlow Mini Compact Keyboard ($79.99) as the primary peripheral, with PortMatrix 8-in-1 USB-C Hub ($49.99) positioned as the direct alternative to achieve the dual setup within the workstation budget.",
+    "tradeoffs": [
+      "KeyFlow Mini chosen for compact 75% mechanical layout; pairing with PortMatrix USB-C hub fulfills both workstation needs close to the $120 threshold."
+    ]
+  }
+}
+

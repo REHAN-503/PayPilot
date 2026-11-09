@@ -116,6 +116,8 @@ enum AgentActivityType {
   WEBHOOK_RECEIVED
   BUDGET_REPLANNED
   AGENT_NEGOTIATED
+  POLICY_BLOCKED
+  FORBIDDEN_ACTION_BLOCKED
   SYSTEM_EVENT
 }
 
@@ -313,6 +315,8 @@ model PurchasePlan {
 
   currency    String    @default("USD")
   explanation String?
+  alternatives Json?
+  tradeoffs    Json?
   expiresAt   DateTime?
 
   createdAt DateTime @default(now())
@@ -524,6 +528,7 @@ model AgentActivity {
 
   type AgentActivityType
 
+  actor       String            @default("AGENT")
   title       String
   description String?
 

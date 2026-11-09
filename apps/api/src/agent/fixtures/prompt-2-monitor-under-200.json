@@ -1,0 +1,37 @@
+{
+  "promptKey": "prompt-2",
+  "rawInput": "Find a monitor under $200 with great text clarity",
+  "normalized": "find a monitor under 200 with great text clarity",
+  "intent": {
+    "goal": "Find a monitor under $200 with great text clarity",
+    "category": "Electronics",
+    "minBudget": null,
+    "maxBudget": 200,
+    "mustHave": ["monitor", "text clarity"],
+    "niceToHave": ["under $200 budget"],
+    "useCase": "General desktop productivity and coding with clear typography",
+    "urgency": "NORMAL",
+    "quantity": 1,
+    "riskNotes": [
+      "Target budget of $200.00 is below the lowest available developer monitor ($229.99). Over-budget replanning required to satisfy text clarity requirement."
+    ]
+  },
+  "planRanking": {
+    "pickedProductSku": "ELEC-006",
+    "alternatives": [
+      {
+        "productSku": "ELEC-003",
+        "reason": "Top-tier 4K monitor alternative, further above requested budget at $349.99."
+      },
+      {
+        "productSku": "WORK-001",
+        "reason": "Studio 4K webcam alternative within the $200 budget ($129.99) if visual clarity upgrades are needed."
+      }
+    ],
+    "reasoning": "The lowest-priced high-clarity monitor in the catalog is PixelView 24-inch QHD at $229.99, which exceeds the requested $200 budget by $29.99. Re-planned to the closest viable candidate meeting the strict text clarity requirement.",
+    "tradeoffs": [
+      "Re-planned above user target budget ($229.99 vs requested $200.00) because no sub-$200 monitor offers the required high-PPI text clarity."
+    ]
+  }
+}
+

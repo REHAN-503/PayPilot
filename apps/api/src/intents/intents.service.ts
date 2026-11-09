@@ -1,278 +1,495 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { LlmService } from '../agent/llm/llm.service.js';
+import { LlmUnavailableError } from '../agent/llm/llm-errors.js';
+import {
+  parseIntentWithLlm,
+  type ParsedIntent,
+} from '../agent/intent-parser.js';
+import { parseIntent as fallbackRegexParseIntent } from './intent-parser.js';
+import {
+  rankAndPlanWithLlm,
+  type CandidateProduct,
+} from '../agent/planner.js';
+import { evaluatePolicy } from '../policies/policy-engine.js';
+import { evaluateRisk } from '../risk/risk-engine.js';
 
-interface InterpretedIntent {
-  category?: string;
-  minBudget?: number;
-  maxBudget?: number;
-  keywords: string[];
-}
-
-const STOP_WORDS = new Set([
-  'a', 'an', 'and', 'the', 'for', 'to', 'of', 'with', 'in',
-  'on', 'me', 'my', 'i', 'need', 'want', 'find', 'buy',
-  'get', 'looking', 'something', 'please', 'under', 'below',
-  'less', 'than', 'up', 'within', 'budget', 'maximum', 'max',
-  'minimum', 'at', 'least', 'above', 'over', 'dollars', 'usd',
-]);
-
-function extractAmount(input: string, pattern: RegExp): number | undefined {
-  const match = input.match(pattern);
-
-  if (!match?.[1]) {
-    return undefined;
-  }
-
-  const amount = Number(match[1].replaceAll(',', ''));
-
-  return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000
-    ? amount
-    : undefined;
-}
-
-function interpretInput(input: string): InterpretedIntent {
-  const normalized = input.toLowerCase();
-
-  const maxBudget =
-    extractAmount(
-      normalized,
-      /(?:under|below|less than|up to|upto|within|maximum|max(?:imum)?(?: of)?|budget(?: of)?)\s*\$?\s*([\d,]+(?:\.\d{1,2})?)/i,
-    ) ??
-    extractAmount(normalized, /\$\s*([\d,]+(?:\.\d{1,2})?)/);
-
-  const minBudget = extractAmount(
-    normalized,
-    /(?:at least|above|over|minimum|min(?:imum)?(?: of)?)\s*\$?\s*([\d,]+(?:\.\d{1,2})?)/i,
-  );
-
-  const categoryRules: Array<[RegExp, string]> = [
-    [/\b(headphones?|earbuds?|earphones?|monitor|keyboard|mouse|laptop|computer|electronics?)\b/i, 'Electronics'],
-    [/\b(speaker|speakers|fitness|fitbit|wearable|lifestyle)\b/i, 'Lifestyle'],
-    [/\b(bulb|lighting|air purifier|home|echo dot)\b/i, 'Home'],
-    [/\b(accessories|usb hub|power bank|charger)\b/i, 'Accessories'],
-    [/\b(webcam|microphone|work)\b/i, 'Work'],
-  ];
-
-  const category = categoryRules.find(([pattern]) => pattern.test(normalized))?.[1];
-
-  const keywords = [
-    ...new Set(
-      normalized
-        .replace(/\$?\d[\d,.]*/g, ' ')
-        .replace(/[^a-z\s-]/g, ' ')
-        .split(/\s+/)
-        .filter((word) => word.length > 2 && !STOP_WORDS.has(word))
-        .slice(0, 8),
-    ),
-  ];
-
-  return { category, minBudget, maxBudget, keywords };
-}
+export type ActivityCallback = (activity: any) => void;
 
 @Injectable()
 export class IntentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(IntentsService.name);
+  private readonly demoMode: boolean;
 
-  async create(userId: string, rawInput: string) {
-    const interpreted = interpretInput(rawInput);
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly llmService: LlmService,
+  ) {
+    this.demoMode = this.config.get<string>('DEMO_MODE') !== 'false';
+  }
+
+  async calculateHistoricalSpend(userId: string) {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [dailyTransactions, monthlyTransactions] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: {
+          userId,
+          type: 'PAYMENT_CAPTURED',
+          createdAt: { gte: startOfDay },
+        },
+        select: { amount: true },
+      }),
+      this.prisma.transaction.findMany({
+        where: {
+          userId,
+          type: 'PAYMENT_CAPTURED',
+          createdAt: { gte: startOfMonth },
+        },
+        select: { amount: true },
+      }),
+    ]);
+
+    const dailySpent = dailyTransactions.reduce(
+      (sum, tx) => sum + Number(tx.amount),
+      0,
+    );
+    const monthlySpent = monthlyTransactions.reduce(
+      (sum, tx) => sum + Number(tx.amount),
+      0,
+    );
+
+    return { dailySpent, monthlySpent };
+  }
+
+  async create(userId: string, rawInput: string, onActivity?: ActivityCallback) {
+    // 1. Fetch or initialize user policy
+    const policy = await this.prisma.userPolicy.upsert({
+      where: { userId },
+      create: {
+        userId,
+        currency: 'USD',
+        autonomyMode: 'ASK_EVERY_TIME',
+        maxTransactionAmount: 250,
+        dailySpendingLimit: 500,
+        monthlySpendingLimit: 2000,
+        requireApprovalAbove: 100,
+        allowAutoExecute: false,
+      },
+      update: {},
+    });
+
+    const policyCeiling = policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null;
+    const { dailySpent, monthlySpent } = await this.calculateHistoricalSpend(userId);
+
+    // Detect adversarial prompt injection indicators in raw text
+    const lowerInput = rawInput.toLowerCase();
+    const isAdversarial =
+      lowerInput.includes('ignore') ||
+      lowerInput.includes('previous instructions') ||
+      lowerInput.includes('no approval') ||
+      lowerInput.includes('bypass');
+
+    // 2. Parse intent via LLM (with fallback to regex parser on LlmUnavailableError)
+    let parsedIntent: ParsedIntent;
+    let fallbackUsed = false;
+    let wasClamped = false;
+
+    try {
+      const result = await parseIntentWithLlm(this.llmService, rawInput, policyCeiling);
+      parsedIntent = result.intent;
+      wasClamped = result.wasClamped;
+    } catch (err) {
+      if (err instanceof LlmUnavailableError) {
+        this.logger.warn(`LLM unavailable for intent parsing, falling back to regex: ${err.message}`);
+        fallbackUsed = true;
+        const regexResult = await fallbackRegexParseIntent(rawInput, { demoMode: true });
+        parsedIntent = {
+          goal: regexResult.explanation,
+          category: regexResult.category ?? 'Electronics',
+          minBudget: regexResult.minBudget ?? null,
+          maxBudget: regexResult.maxBudget ?? null,
+          mustHave: regexResult.keywords,
+          niceToHave: [],
+          useCase: regexResult.explanation,
+          urgency: 'NORMAL',
+          quantity: regexResult.quantity,
+          riskNotes: isAdversarial ? ['Adversarial patterns flagged by fallback parser.'] : [],
+        };
+      } else {
+        throw err;
+      }
+    }
 
     return this.prisma.$transaction(async (tx) => {
-      const policy = await tx.userPolicy.upsert({
-        where: { userId },
-        create: { userId },
-        update: {},
-      });
+      // Helper to persist and notify activity listeners
+      const emit = async (data: {
+        intentId?: string;
+        planId?: string;
+        type: any;
+        actor?: string;
+        title: string;
+        description?: string;
+        metadata?: any;
+      }) => {
+        const act = await tx.agentActivity.create({
+          data: {
+            userId,
+            intentId: data.intentId,
+            planId: data.planId,
+            type: data.type,
+            actor: data.actor ?? 'AGENT',
+            title: data.title,
+            description: data.description,
+            metadata: data.metadata,
+          },
+        });
+        if (onActivity) {
+          try {
+            onActivity(act);
+          } catch {
+            // listener error should not abort transaction
+          }
+        }
+        return act;
+      };
 
+      // 4. Persist Initial PurchaseIntent
       const intent = await tx.purchaseIntent.create({
         data: {
           userId,
           rawInput,
-          interpretedGoal: interpreted.category
-            ? `Find a suitable ${interpreted.category.toLowerCase()} product`
-            : "Find a suitable product matching the user's request",
-          category: interpreted.category,
-          minBudget: interpreted.minBudget ?? null,
-          maxBudget: interpreted.maxBudget ?? null,
-          currency: policy.currency,
-          preferences: interpreted.keywords,
+          interpretedGoal: parsedIntent.goal,
+          category: parsedIntent.category,
+          minBudget: parsedIntent.minBudget,
+          maxBudget: parsedIntent.maxBudget,
+          currency: 'USD',
+          preferences: parsedIntent.mustHave,
           constraints: {
-            minBudget: interpreted.minBudget ?? null,
-            maxBudget: interpreted.maxBudget ?? null,
+            minBudget: parsedIntent.minBudget,
+            maxBudget: parsedIntent.maxBudget,
+            quantity: parsedIntent.quantity,
+            useCase: parsedIntent.useCase,
+            urgency: parsedIntent.urgency,
           },
           status: 'PROCESSING',
         },
       });
 
-      await tx.agentActivity.create({
-        data: {
-          userId,
+      await emit({
+        intentId: intent.id,
+        type: 'INTENT_CREATED',
+        actor: 'AGENT',
+        title: 'Purchase intent recorded',
+        description: `User goal: "${rawInput.slice(0, 100)}"`,
+        metadata: { rawInput },
+      });
+
+      if (fallbackUsed) {
+        await emit({
           intentId: intent.id,
-          type: 'INTENT_CREATED',
-          title: 'Purchase request received',
-          description: 'PayPilot saved your purchase request.',
+          type: 'SYSTEM_EVENT',
+          actor: 'AGENT',
+          title: 'Parser fallback activated',
+          description: 'LLM service was unavailable; safely parsed intent using deterministic fallback rules.',
+          metadata: { fallback: true },
+        });
+      }
+
+      await emit({
+        intentId: intent.id,
+        type: 'INTENT_ANALYZED',
+        actor: 'AGENT',
+        title: 'Intent parsed by PayPilot agent',
+        description: parsedIntent.goal,
+        metadata: {
+          category: parsedIntent.category,
+          maxBudget: parsedIntent.maxBudget,
+          mustHave: parsedIntent.mustHave,
+          useCase: parsedIntent.useCase,
+          wasClamped,
         },
       });
 
-      await tx.agentActivity.create({
-        data: {
-          userId,
+      // Log prompt injection neutralization if adversarial indicators present
+      if (isAdversarial || parsedIntent.riskNotes.some((n) => n.includes('neutralized') || n.includes('Adversarial'))) {
+        await emit({
           intentId: intent.id,
-          type: 'INTENT_ANALYZED',
-          title: 'Purchase intent interpreted',
-          description: 'PayPilot extracted the category, budget and search terms.',
-          metadata: {
-            category: interpreted.category ?? null,
-            keywords: interpreted.keywords,
-            minBudget: interpreted.minBudget ?? null,
-            maxBudget: interpreted.maxBudget ?? null,
-          },
-        },
-      });
+          type: 'FORBIDDEN_ACTION_BLOCKED',
+          actor: 'AGENT',
+          title: 'Adversarial instruction neutralized',
+          description: 'Adversarial instruction attempting to bypass policy or user authorization was blocked. Mandatory spending guardrails remain enforced.',
+          metadata: { riskNotes: parsedIntent.riskNotes },
+        });
+      }
 
-      const products = await tx.product.findMany({
+      // 5. Query candidate products: top 12 by SQL filter on category/budget ± 20%
+      const maxBudgetNum = parsedIntent.maxBudget != null ? Number(parsedIntent.maxBudget) : null;
+      const minBudgetNum = parsedIntent.minBudget != null ? Number(parsedIntent.minBudget) : null;
+      const upperPrice = maxBudgetNum != null ? maxBudgetNum * 1.2 : undefined;
+      const lowerPrice = minBudgetNum != null ? minBudgetNum * 0.8 : undefined;
+
+      let candidateProducts = await tx.product.findMany({
         where: {
           status: 'ACTIVE',
-          ...(interpreted.category
+          ...(parsedIntent.category
+            ? { category: { equals: parsedIntent.category, mode: 'insensitive' } }
+            : {}),
+          ...(upperPrice != null || lowerPrice != null
             ? {
-                category: {
-                  equals: interpreted.category,
-                  mode: 'insensitive',
+                price: {
+                  ...(upperPrice != null ? { lte: upperPrice } : {}),
+                  ...(lowerPrice != null ? { gte: lowerPrice } : {}),
                 },
               }
             : {}),
-          ...(interpreted.keywords.length
-            ? {
-                OR: interpreted.keywords.flatMap((keyword) => [
-                  { name: { contains: keyword, mode: 'insensitive' as const } },
-                  { description: { contains: keyword, mode: 'insensitive' as const } },
-                ]),
-              }
-            : {}),
         },
-        take: 50,
+        take: 12,
+        orderBy: { price: 'asc' },
       });
 
-      await tx.agentActivity.create({
+      // If category/price filter returns fewer than 3 candidates, expand search
+      if (candidateProducts.length < 3) {
+        const categoryItems = await tx.product.findMany({
+          where: {
+            status: 'ACTIVE',
+            ...(parsedIntent.category
+              ? { category: { equals: parsedIntent.category, mode: 'insensitive' } }
+              : {}),
+          },
+          take: 12,
+          orderBy: { price: 'asc' },
+        });
+        const seen = new Set(candidateProducts.map((c) => c.id));
+        for (const item of categoryItems) {
+          if (!seen.has(item.id)) {
+            candidateProducts.push(item);
+            seen.add(item.id);
+          }
+        }
+      }
+
+      // If still empty (e.g. unknown category), load top active items
+      if (candidateProducts.length === 0) {
+        candidateProducts = await tx.product.findMany({
+          where: { status: 'ACTIVE' },
+          take: 12,
+          orderBy: { price: 'asc' },
+        });
+      }
+
+      await emit({
+        intentId: intent.id,
+        type: 'PRODUCT_SEARCHED',
+        actor: 'AGENT',
+        title: 'Product catalog searched',
+        description: `Found ${candidateProducts.length} candidate catalog products.`,
+        metadata: {
+          candidateCount: candidateProducts.length,
+          candidates: candidateProducts.map((c) => ({ sku: c.sku, name: c.name, price: Number(c.price) })),
+        },
+      });
+
+      // 6. Rank and plan with LLM planner (verifies candidate IDs, rejects hallucinated IDs, recomputes prices)
+      const planExecution = await rankAndPlanWithLlm(
+        this.llmService,
+        parsedIntent,
+        candidateProducts as CandidateProduct[],
+        rawInput,
+      );
+
+      await emit({
+        intentId: intent.id,
+        type: 'PRODUCT_SELECTED',
+        actor: 'AGENT',
+        title: 'Product recommended',
+        description: `${planExecution.pickedProduct.name} (${planExecution.pickedProduct.sku}) selected at $${planExecution.unitPrice.toFixed(2)}.`,
+        metadata: {
+          sku: planExecution.pickedProduct.sku,
+          price: planExecution.unitPrice,
+          productId: planExecution.pickedProduct.id,
+          reasoning: planExecution.reasoning,
+        },
+      });
+
+      // 7. Deterministic Policy Engine evaluation (Rule 3)
+      const policyEvaluation = evaluatePolicy({
+        planAmount: planExecution.total,
+        currency: 'USD',
+        policy: {
+          autonomyMode: policy.autonomyMode,
+          currency: policy.currency,
+          maxTransactionAmount: policy.maxTransactionAmount,
+          dailySpendingLimit: policy.dailySpendingLimit,
+          monthlySpendingLimit: policy.monthlySpendingLimit,
+          requireApprovalAbove: policy.requireApprovalAbove,
+          allowAutoExecute: policy.allowAutoExecute,
+        },
+        dailySpentSoFar: dailySpent,
+        monthlySpentSoFar: monthlySpent,
+      });
+
+      // 8. Deterministic Risk Assessment (Rule 3)
+      const dailyCap = policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : 500;
+      const riskEvaluation = evaluateRisk({
+        planAmount: planExecution.total,
+        policyPassed: policyEvaluation.passed,
+        violationsCount: policyEvaluation.violations.length,
+        dailySpentRatio: (dailySpent + planExecution.total) / dailyCap,
+        itemCount: planExecution.quantity,
+        isFirstPurchase: dailySpent === 0 && monthlySpent === 0,
+      });
+
+      // 9. Determine plan status
+      const isAutoApproved =
+        policyEvaluation.canAutoExecute &&
+        riskEvaluation.level !== 'CRITICAL' &&
+        riskEvaluation.level !== 'HIGH';
+
+      const planStatus = isAutoApproved ? 'APPROVED' : 'AWAITING_APPROVAL';
+      const intentStatus = isAutoApproved ? 'APPROVED' : 'AWAITING_APPROVAL';
+
+      // 10. Persist PurchasePlan with alternatives and tradeoffs
+      const plan = await tx.purchasePlan.create({
         data: {
           userId,
           intentId: intent.id,
-          type: 'PRODUCT_SEARCHED',
-          title: 'Product catalog searched',
-          description: `PayPilot checked ${products.length} matching catalog products.`,
-          metadata: { resultCount: products.length },
+          version: 1,
+          status: planStatus,
+          subtotal: planExecution.subtotal.toFixed(2),
+          tax: planExecution.tax.toFixed(2),
+          shipping: planExecution.shipping.toFixed(2),
+          discount: planExecution.discount.toFixed(2),
+          total: planExecution.total.toFixed(2),
+          currency: 'USD',
+          explanation: planExecution.reasoning,
+          alternatives: planExecution.alternatives.map((a) => ({
+            productId: a.product.id,
+            sku: a.product.sku,
+            name: a.product.name,
+            price: Number(a.product.price),
+            reason: a.reason,
+          })),
+          tradeoffs: planExecution.tradeoffs,
+          items: {
+            create: {
+              productId: planExecution.pickedProduct.id,
+              productName: planExecution.pickedProduct.name,
+              productSku: planExecution.pickedProduct.sku,
+              unitPrice: planExecution.unitPrice.toFixed(2),
+              quantity: planExecution.quantity,
+              lineTotal: planExecution.total.toFixed(2),
+              currency: 'USD',
+            },
+          },
+        },
+        include: {
+          items: true,
         },
       });
 
-      const rankedProducts = products
-        .map((product) => {
-          const searchableText =
-            `${product.name} ${product.description ?? ''} ${product.category}`.toLowerCase();
-
-          const score = interpreted.keywords.reduce(
-            (total, keyword) => total + (searchableText.includes(keyword) ? 1 : 0),
-            0,
-          );
-
-          return { product, score };
-        })
-        .sort(
-          (a, b) =>
-            b.score - a.score ||
-            Number(a.product.price) - Number(b.product.price),
-        );
-
-      const eligibleProducts = rankedProducts.filter(({ product }) => {
-        const price = Number(product.price);
-
-        return (
-          (interpreted.minBudget === undefined || price >= interpreted.minBudget) &&
-          (interpreted.maxBudget === undefined || price <= interpreted.maxBudget)
-        );
+      // 11. Persist RiskAssessment
+      const riskRecord = await tx.riskAssessment.create({
+        data: {
+          planId: plan.id,
+          level: riskEvaluation.level,
+          score: riskEvaluation.score,
+          reasons: riskEvaluation.reasons,
+          recommendations: riskEvaluation.recommendations,
+          policyPassed: policyEvaluation.passed,
+          explanation: `Risk Score: ${riskEvaluation.score}/100 (${riskEvaluation.level}). Policy check: ${policyEvaluation.passed ? 'PASSED' : 'FLAGGED'}.`,
+        },
       });
 
-      const selected = eligibleProducts[0]?.product;
-      let plan = null;
-
-      if (selected) {
-        plan = await tx.purchasePlan.create({
+      // 12. Create Approval row if manual review required
+      let approvalRecord: any = null;
+      if (!isAutoApproved) {
+        approvalRecord = await tx.approval.create({
           data: {
             userId,
-            intentId: intent.id,
-            version: 1,
-            status: 'READY',
-            subtotal: selected.price,
-            tax: 0,
-            shipping: 0,
-            discount: 0,
-            total: selected.price,
-            currency: selected.currency,
-            explanation:
-              'Selected from the active catalog using keyword relevance and the requested budget. Taxes and shipping are not included.',
-            items: {
-              create: {
-                productId: selected.id,
-                productName: selected.name,
-                productSku: selected.sku,
-                unitPrice: selected.price,
-                quantity: 1,
-                lineTotal: selected.price,
-                currency: selected.currency,
-              },
-            },
-          },
-          include: { items: true },
-        });
-
-        await tx.agentActivity.create({
-          data: {
-            userId,
-            intentId: intent.id,
             planId: plan.id,
-            type: 'PRODUCT_SELECTED',
-            title: 'Product selected',
-            description: `${selected.name} was selected as the best catalog match.`,
-            metadata: {
-              productId: selected.id,
-              price: selected.price.toString(),
-              currency: selected.currency,
-            },
-          },
-        });
-
-        await tx.agentActivity.create({
-          data: {
-            userId,
-            intentId: intent.id,
-            planId: plan.id,
-            type: 'PLAN_CREATED',
-            title: 'Purchase plan created',
-            description: 'A draft purchase plan is ready for review.',
+            status: 'PENDING',
+            decisionNote:
+              policyEvaluation.reasons[0] ||
+              policyEvaluation.violations[0] ||
+              'Awaiting explicit user authorization.',
           },
         });
       }
 
-      const updatedIntent = await tx.purchaseIntent.update({
+      // Update Intent status
+      await tx.purchaseIntent.update({
         where: { id: intent.id },
-        data: { status: plan ? 'PLANNED' : 'DRAFT' },
+        data: { status: intentStatus },
       });
 
+      // 13. Emit Policy & Risk activities
+      if (policyEvaluation.passed) {
+        await emit({
+          intentId: intent.id,
+          planId: plan.id,
+          type: 'POLICY_CHECKED',
+          actor: 'AGENT',
+          title: 'Spending policy passed',
+          description: policyEvaluation.reasons.join('; ') || 'All deterministic limit checks passed.',
+          metadata: { passed: true, violations: [] },
+        });
+      } else {
+        await emit({
+          intentId: intent.id,
+          planId: plan.id,
+          type: 'POLICY_BLOCKED',
+          actor: 'AGENT',
+          title: 'Spending policy violation detected',
+          description: policyEvaluation.violations.join('; '),
+          metadata: { passed: false, violations: policyEvaluation.violations },
+        });
+      }
+
+      await emit({
+        intentId: intent.id,
+        planId: plan.id,
+        type: 'RISK_ASSESSED',
+        actor: 'AGENT',
+        title: `Risk evaluated: ${riskEvaluation.level} (${riskEvaluation.score}/100)`,
+        description: riskEvaluation.reasons[0] || 'Baseline risk evaluation completed.',
+        metadata: {
+          level: riskEvaluation.level,
+          score: riskEvaluation.score,
+          reasons: riskEvaluation.reasons,
+        },
+      });
+
+      if (!isAutoApproved) {
+        await emit({
+          intentId: intent.id,
+          planId: plan.id,
+          type: 'APPROVAL_REQUESTED',
+          actor: 'AGENT',
+          title: 'Awaiting user authorization',
+          description: 'Explicit user authorization required before PayPal order can be created.',
+          metadata: { approvalId: approvalRecord?.id },
+        });
+      }
+
       return {
-        intent: updatedIntent,
-        plan,
-        alternatives: rankedProducts
-          .filter(({ product }) => product.id !== selected?.id)
-          .slice(0, 4)
-          .map(({ product }) => ({
-            id: product.id,
-            name: product.name,
-            category: product.category,
-            price: product.price,
-            currency: product.currency,
-            imageUrl: product.imageUrl,
-          })),
-        message: plan
-          ? 'Your purchase intent has been analyzed and a plan is ready for review.'
-          : 'Your intent was saved, but no catalog product matched all extracted constraints.',
+        intent,
+        plan: {
+          ...plan,
+          riskAssessments: [riskRecord],
+          approvals: approvalRecord ? [approvalRecord] : [],
+        },
+        policyEvaluation,
+        riskAssessment: riskRecord,
+        alternatives: planExecution.alternatives.map((a) => a.product),
+        tradeoffs: planExecution.tradeoffs,
+        message: isAutoApproved
+          ? 'Purchase plan created and pre-authorized within your policy limits.'
+          : 'Purchase plan generated. Please review and authorize the plan to proceed with payment.',
       };
     });
   }
@@ -283,8 +500,15 @@ export class IntentsService {
       orderBy: { createdAt: 'desc' },
       include: {
         plans: {
-          orderBy: { createdAt: 'desc' },
-          include: { items: true },
+          orderBy: { version: 'desc' },
+          include: {
+            items: true,
+            riskAssessments: true,
+            approvals: true,
+          },
+        },
+        activities: {
+          orderBy: { createdAt: 'asc' },
         },
       },
     });
@@ -295,15 +519,21 @@ export class IntentsService {
       where: { id, userId },
       include: {
         plans: {
-          orderBy: { createdAt: 'desc' },
-          include: { items: true },
+          orderBy: { version: 'desc' },
+          include: {
+            items: true,
+            riskAssessments: true,
+            approvals: true,
+          },
         },
-        activities: { orderBy: { createdAt: 'asc' } },
+        activities: {
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
     if (!intent) {
-      throw new NotFoundException('Purchase intent not found');
+      throw new NotFoundException(`Purchase intent '${id}' not found`);
     }
 
     return intent;

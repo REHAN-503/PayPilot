@@ -1,0 +1,35 @@
+{
+  "promptKey": "prompt-1",
+  "rawInput": "I need a developer monitor under $250. Prioritize text clarity and value.",
+  "normalized": "i need a developer monitor under 250 prioritize text clarity and value",
+  "intent": {
+    "goal": "Purchase a developer monitor under $250 with high text clarity and high value",
+    "category": "Electronics",
+    "minBudget": null,
+    "maxBudget": 250,
+    "mustHave": ["developer monitor", "text clarity"],
+    "niceToHave": ["high value", "IPS", "sRGB calibration"],
+    "useCase": "Software engineering, reading code, and documentation",
+    "urgency": "NORMAL",
+    "quantity": 1,
+    "riskNotes": []
+  },
+  "planRanking": {
+    "pickedProductSku": "ELEC-006",
+    "alternatives": [
+      {
+        "productSku": "ELEC-003",
+        "reason": "Premium 27-inch 4K monitor alternative with higher resolution, but exceeds target $250 budget at $349.99."
+      },
+      {
+        "productSku": "ELEC-004",
+        "reason": "Ergonomic precision mouse alternative for workspace productivity."
+      }
+    ],
+    "reasoning": "PixelView 24-inch QHD Developer Monitor offers superior text sharpness, factory sRGB calibration, and anti-glare coating at $229.99, comfortably satisfying the $250 budget ceiling.",
+    "tradeoffs": [
+      "Selected 24-inch QHD panel ($229.99) fits within the $250 budget ceiling instead of the larger 27-inch 4K panel ($349.99) which would require a budget exception."
+    ]
+  }
+}
+
