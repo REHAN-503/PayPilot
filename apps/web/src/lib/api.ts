@@ -13,9 +13,11 @@ import {
   AnalyticsSummarySchema,
   NegotiationSchema,
   PaymentSchema,
+  ProductSchema,
   PurchasePlanSchema,
   UserPolicySchema,
 } from './schemas';
+import type { Product } from './schemas';
 
 export class ApiError extends Error {
   constructor(
@@ -78,6 +80,40 @@ async function request<T>(
 }
 
 export const api = {
+  // Catalog
+  getProducts: (params?: { search?: string; category?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.category) query.set('category', params.category);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    return request<{
+      data: Product[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/api/products${queryString}`, { method: 'GET' }, {
+      parse: (value) => {
+        const response = value as {
+          data?: unknown;
+          pagination?: unknown;
+        };
+        if (!Array.isArray(response.data) || !response.pagination) {
+          throw new Error('Invalid product catalog response');
+        }
+        return {
+          data: response.data.map((product) => ProductSchema.parse(product)),
+          pagination: response.pagination as {
+            page: number;
+            limit: number;
+            total: number;
+            totalPages: number;
+          },
+        };
+      },
+    });
+  },
+
   // Intents & Planning
   createIntent: (rawInput: string) =>
     request<{

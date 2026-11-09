@@ -39,6 +39,8 @@ export function ApprovalSheet({
   const [isRejecting, setIsRejecting] = React.useState(false);
   const [approvedSuccess, setApprovedSuccess] = React.useState(false);
   const [createdPaymentId, setCreatedPaymentId] = React.useState<string | null>(null);
+  const createdPaymentIdRef = React.useRef<string | null>(null);
+  const [paypalApprovalUrl, setPaypalApprovalUrl] = React.useState<string | null>(null);
 
   const isApproved = plan.status === 'APPROVED' || approvedSuccess;
 
@@ -271,7 +273,9 @@ export function ApprovalSheet({
                   createOrder={async () => {
                     try {
                       const res = await api.createPayment(plan.id);
+                      createdPaymentIdRef.current = res.payment.id;
                       setCreatedPaymentId(res.payment.id);
+                      setPaypalApprovalUrl(res.approveUrl ?? null);
                       return res.orderId;
                     } catch (err: unknown) {
                       const message = err instanceof Error ? err.message : String(err);
@@ -281,7 +285,10 @@ export function ApprovalSheet({
                   }}
                   onApprove={async (data) => {
                     try {
-                      const paymentId = createdPaymentId || plan.payments?.[0]?.id;
+                      const paymentId =
+                        createdPaymentIdRef.current ||
+                        createdPaymentId ||
+                        plan.payments?.[0]?.id;
                       if (!paymentId) {
                         toast.error('Payment reference missing');
                         return;
@@ -308,6 +315,24 @@ export function ApprovalSheet({
                   }}
                 />
               </div>
+
+              {paypalApprovalUrl && (
+                <div className="rounded-[var(--radius)] border border-[var(--amber)]/40 bg-[var(--amber)]/10 p-3 text-xs text-[var(--ink-2)]">
+                  <p className="mb-2">
+                    If PayPal checkout does not open, continue in this tab instead:
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-[var(--amber)]/50 hover:bg-[var(--amber)]/15"
+                    onClick={() => {
+                      window.location.assign(paypalApprovalUrl);
+                    }}
+                  >
+                    Open PayPal Checkout
+                  </Button>
+                </div>
+              )}
 
               <p className="text-[11px] text-center text-[var(--ink-3)] flex items-center justify-center gap-1.5">
                 <Info className="w-3.5 h-3.5 text-[var(--ledger)] shrink-0" />

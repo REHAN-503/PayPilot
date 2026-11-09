@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import Image from 'next/image';
 import {
   Sparkles,
   ArrowRight,
@@ -12,6 +13,7 @@ import {
   Zap,
   ShoppingBag,
   ChevronRight,
+  Package,
 } from 'lucide-react';
 import { DashboardShell } from '../components/layout/DashboardShell';
 import { LiveAgentPanel, INITIAL_AGENT_STEPS, type AgentStep } from '../components/agent/LiveAgentPanel';
@@ -22,10 +24,49 @@ import { Textarea } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { DEMO_PROMPTS, type PurchasePlan } from '../lib/schemas';
+import type { Product } from '../lib/schemas';
 import { api } from '../lib/api';
 import { formatCurrency } from '../lib/utils';
 import { useIntentStream, type AgentActivity } from '../hooks/useIntentStream';
 import { toast } from 'sonner';
+
+function LiveProductCard({ product }: { product: Product }) {
+  const [imageFailed, setImageFailed] = React.useState(false);
+
+  return (
+    <Card className="overflow-hidden border-[var(--rule)] bg-[var(--card)]/70">
+      <div className="relative aspect-square bg-[var(--paper)]">
+        {product.imageUrl && !imageFailed ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            unoptimized
+            className="object-cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <Package className="h-10 w-10 text-[var(--ink-3)]" />
+          </div>
+        )}
+      </div>
+      <CardContent className="space-y-2 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <Badge variant="outline" className="text-[10px]">
+            {product.category || 'Catalog'}
+          </Badge>
+          <span className="text-xs text-[var(--ink-3)]">{product.stock} in stock</span>
+        </div>
+        <h3 className="line-clamp-2 text-sm font-semibold text-[var(--ink)]">{product.name}</h3>
+        <div className="flex items-center justify-between">
+          <span className="text-lg font-bold text-[var(--ink)]">{formatCurrency(product.price)}</span>
+          <span className="font-mono text-[10px] text-[var(--ink-3)]">{product.sku}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function CommandCenterPage() {
   const [goal, setGoal] = React.useState(DEMO_PROMPTS[0].text);
@@ -52,6 +93,12 @@ export default function CommandCenterPage() {
   const { data: timelineData, refetch: refetchTimeline } = useQuery({
     queryKey: ['timeline-recent'],
     queryFn: () => api.getTimeline(),
+  });
+
+  const { data: catalog, isLoading: isCatalogLoading, isError: isCatalogError } = useQuery({
+    queryKey: ['products', 'catalog'],
+    queryFn: () => api.getProducts({ limit: 8 }),
+    staleTime: 30_000,
   });
 
   const updateStepStatus = React.useCallback((id: string, status: AgentStep['status'], detail?: string) => {
@@ -181,6 +228,35 @@ export default function CommandCenterPage() {
   return (
     <DashboardShell>
       <div className="space-y-8">
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-[var(--ink)]">Live Product Catalog</h2>
+              <p className="text-xs text-[var(--ink-3)]">
+                Products and availability are loaded from the API database.
+              </p>
+            </div>
+            {catalog?.pagination.total !== undefined && (
+              <span className="text-xs text-[var(--ink-3)]">{catalog.pagination.total} products</span>
+            )}
+          </div>
+          {isCatalogLoading ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="aspect-[3/4] animate-pulse rounded-2xl bg-[var(--card)]" />
+              ))}
+            </div>
+          ) : isCatalogError ? (
+            <div className="rounded-2xl border border-[var(--vermilion)]/30 bg-[var(--vermilion)]/5 p-4 text-sm text-[var(--vermilion)]">
+              The live product catalog is unavailable. Try again after the API is running.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {catalog?.data.map((product) => <LiveProductCard key={product.id} product={product} />)}
+            </div>
+          )}
+        </section>
+
         {/* Hero Section & Goal Input */}
         <div className="desk-enter space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

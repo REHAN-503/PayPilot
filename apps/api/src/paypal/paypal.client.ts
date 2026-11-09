@@ -119,6 +119,13 @@ export class PayPalClient {
     );
   }
 
+  getApprovalUrl(orderId: string): string {
+    const checkoutHost = this.baseUrl.includes('sandbox')
+      ? 'www.sandbox.paypal.com'
+      : 'www.paypal.com';
+    return `https://${checkoutHost}/checkoutnow?token=${encodeURIComponent(orderId)}`;
+  }
+
   async getAccessToken(): Promise<string> {
     const now = Date.now();
     // Early refresh buffer: 60 seconds before expiration
@@ -221,7 +228,7 @@ export class PayPalClient {
         id: mockId,
         status: 'CREATED',
         links: [
-          { rel: 'approve', href: `https://www.sandbox.paypal.com/checkoutnow?token=${mockId}` },
+          { rel: 'approve', href: this.getApprovalUrl(mockId) },
         ],
       };
     }
@@ -510,4 +517,3 @@ export class PayPalClient {
     }
   }
 }
-

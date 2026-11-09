@@ -26,7 +26,7 @@ export class PlansService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
-        items: true,
+        items: { include: { product: true } },
         riskAssessments: { orderBy: { createdAt: 'desc' }, take: 1 },
         approvals: { orderBy: { createdAt: 'desc' }, take: 1 },
       },

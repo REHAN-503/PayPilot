@@ -41,6 +41,7 @@ describe('PaymentsService Gating & Security', () => {
       createOrder: vi.fn(),
       captureOrder: vi.fn(),
       getOrder: vi.fn(),
+      getApprovalUrl: vi.fn((orderId: string) => `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`),
     };
 
     ledgerService = {
@@ -97,6 +98,33 @@ describe('PaymentsService Gating & Security', () => {
     await expect(service.createPaymentOrder('user-1', 'plan-1')).rejects.toThrow(
       ForbiddenException,
     );
+    expect(paypalClient.createOrder).not.toHaveBeenCalled();
+  });
+
+  it('reuses an active PayPal order when checkout retries after plan execution starts', async () => {
+    prisma.purchasePlan.findFirst.mockResolvedValue({
+      id: 'plan-1',
+      userId: 'user-1',
+      status: 'EXECUTING',
+      expiresAt: new Date(Date.now() + 600000),
+      intentId: 'intent-1',
+      items: [],
+      intent: { id: 'intent-1' },
+    });
+    const activePayment = {
+      id: 'pay-1',
+      status: 'PAYER_ACTION_REQUIRED',
+      paypalOrderId: 'ORDER-12345',
+    };
+    prisma.payment.findFirst.mockResolvedValue(activePayment);
+
+    await expect(service.createPaymentOrder('user-1', 'plan-1')).resolves.toEqual({
+      payment: activePayment,
+      orderId: 'ORDER-12345',
+      status: 'PAYER_ACTION_REQUIRED',
+      approveUrl: 'https://www.sandbox.paypal.com/checkoutnow?token=ORDER-12345',
+    });
+
     expect(paypalClient.createOrder).not.toHaveBeenCalled();
   });
 
@@ -188,4 +216,3 @@ describe('PaymentsService Gating & Security', () => {
     );
   });
 });
-

@@ -89,6 +89,43 @@ export class PaymentsService {
       intentId: plan.intentId,
     });
 
+    // PayPal may invoke createOrder more than once while opening or retrying
+    // the checkout popup. Reuse the active order instead of rejecting it after
+    // the first request moved the plan to EXECUTING.
+    if (plan.expiresAt && new Date() > new Date(plan.expiresAt)) {
+      await this.prisma.agentActivity.create({
+        data: {
+          userId,
+          planId: plan.id,
+          intentId: plan.intentId,
+          type: 'FORBIDDEN_ACTION_BLOCKED',
+          actor: 'AGENT',
+          title: 'Payment execution blocked on expired plan',
+          description: `Plan expired at ${plan.expiresAt.toISOString()}. Payment authorization window has elapsed.`,
+        },
+      });
+      throw new ForbiddenException('Purchase plan authorization has expired. Request fresh approval.');
+    }
+
+    const activePayment = await this.prisma.payment.findFirst({
+      where: {
+        userId,
+        planId: plan.id,
+        paypalOrderId: { not: null },
+        status: { in: ['ORDER_CREATED', 'PAYER_ACTION_REQUIRED'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (activePayment?.paypalOrderId) {
+      return {
+        payment: activePayment,
+        orderId: activePayment.paypalOrderId,
+        status: activePayment.status,
+        approveUrl: this.paypalClient.getApprovalUrl(activePayment.paypalOrderId),
+      };
+    }
+
     // 1. Plan status MUST be APPROVED
     if (plan.status !== 'APPROVED') {
       await this.prisma.agentActivity.create({
@@ -109,23 +146,7 @@ export class PaymentsService {
       );
     }
 
-    // 2. Plan expiration check
-    if (plan.expiresAt && new Date() > new Date(plan.expiresAt)) {
-      await this.prisma.agentActivity.create({
-        data: {
-          userId,
-          planId: plan.id,
-          intentId: plan.intentId,
-          type: 'FORBIDDEN_ACTION_BLOCKED',
-          actor: 'AGENT',
-          title: 'Payment execution blocked on expired plan',
-          description: `Plan expired at ${plan.expiresAt.toISOString()}. Payment authorization window has elapsed.`,
-        },
-      });
-      throw new ForbiddenException('Purchase plan authorization has expired. Request fresh approval.');
-    }
-
-    // 3. Approval window check
+    // 2. Approval window check
     const latestApproval = plan.approvals[0];
     if (latestApproval && latestApproval.expiresAt && new Date() > new Date(latestApproval.expiresAt)) {
       throw new ForbiddenException('User approval window has expired. Fresh authorization required.');
