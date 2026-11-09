@@ -113,7 +113,9 @@ export class LlmService {
     user: string,
     promptType: 'intent' | 'planRanking' = 'intent',
   ): Promise<T> {
-    if (!this.demoMode && !this.anthropicClient && !this.geminiApiKey) {
+    const hasLiveLlm = Boolean(this.anthropicClient || this.geminiApiKey);
+
+    if (!this.demoMode && !hasLiveLlm) {
       this.logger.error(
         `[LlmService] DEMO_MODE is false but no LLM API key configured for prompt: "${user.slice(0, 80)}"`,
       );
@@ -122,8 +124,9 @@ export class LlmService {
       );
     }
 
-    // In DEMO_MODE, return cached fixture if available
-    if (this.demoMode) {
+    // When a live LLM key is configured, ALWAYS invoke the real LLM provider first.
+    // Cached demo fixtures are ONLY used when no live LLM client exists, or as an emergency fallback.
+    if (!hasLiveLlm && this.demoMode) {
       const fixture = this.getFixtureForPrompt(user);
       if (fixture) {
         const fixturePayload = promptType === 'intent' ? fixture.intent : fixture.planRanking;
@@ -134,15 +137,12 @@ export class LlmService {
         }
       }
 
-      // If demo mode has no matching fixture and no client, throw LlmUnavailableError
-      if (!this.anthropicClient && !this.geminiApiKey) {
-        throw new LlmUnavailableError(
-          `No LLM client configured and no DEMO_MODE fixture found for prompt: "${user.slice(0, 80)}"`,
-        );
-      }
+      throw new LlmUnavailableError(
+        `No LLM client configured and no DEMO_MODE fixture found for prompt: "${user.slice(0, 80)}"`,
+      );
     }
 
-    // Call LLM provider with 1 retry and 15s timeout
+    // Call live LLM provider with 1 retry and 15s timeout
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -160,14 +160,16 @@ export class LlmService {
       }
     }
 
-    // If live call failed after retry, try falling back to fixture if any match exists
-    const fallbackFixture = this.getFixtureForPrompt(user);
-    if (fallbackFixture) {
-      const fixturePayload = promptType === 'intent' ? fallbackFixture.intent : fallbackFixture.planRanking;
-      const parsed = schema.safeParse(fixturePayload);
-      if (parsed.success) {
-        this.logger.warn(`[LlmService] Falling back to fixture after LLM failure for: "${user.slice(0, 60)}"`);
-        return parsed.data;
+    // If live call failed after retry and DEMO_MODE is on, fall back to fixture if any match exists
+    if (this.demoMode) {
+      const fallbackFixture = this.getFixtureForPrompt(user);
+      if (fallbackFixture) {
+        const fixturePayload = promptType === 'intent' ? fallbackFixture.intent : fallbackFixture.planRanking;
+        const parsed = schema.safeParse(fixturePayload);
+        if (parsed.success) {
+          this.logger.warn(`[LlmService] Falling back to fixture after LLM failure for: "${user.slice(0, 60)}"`);
+          return parsed.data;
+        }
       }
     }
 
@@ -182,11 +184,23 @@ export class LlmService {
     const timeoutSignal = AbortSignal.timeout(15000);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${this.geminiApiKey}`;
 
+    // Helper to format schema instruction so Gemini reliably adheres to expected JSON keys
+    let schemaHint = '';
+    try {
+      const jsonSchema = (schema as any).toJSONSchema ? (schema as any).toJSONSchema() : null;
+      if (jsonSchema && jsonSchema.properties) {
+        const propKeys = Object.keys(jsonSchema.properties);
+        schemaHint = `\n\nCRITICAL OUTPUT SPECIFICATION: Return a JSON object with EXACTLY these top-level keys: ${JSON.stringify(propKeys)}. Schema details:\n${JSON.stringify(jsonSchema.properties, null, 2)}`;
+      }
+    } catch {
+      // Fallback if toJSONSchema is unavailable
+    }
+
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
+        systemInstruction: { parts: [{ text: system + schemaHint }] },
         contents: [{ role: 'user', parts: [{ text: user }] }],
         generationConfig: {
           responseMimeType: 'application/json',
