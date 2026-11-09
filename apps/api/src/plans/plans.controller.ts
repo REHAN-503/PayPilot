@@ -11,6 +11,7 @@ import {
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { z } from 'zod';
 import { PlansService } from './plans.service.js';
+import { PaymentsService } from '../payments/payments.service.js';
 
 const selectAlternativeSchema = z.object({
   productId: z.string().min(1),
@@ -27,7 +28,10 @@ const decisionNoteSchema = z.object({
 
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly plansService: PlansService) {}
+  constructor(
+    private readonly plansService: PlansService,
+    private readonly paymentsService: PaymentsService,
+  ) {}
 
   @Get()
   findAll(@Session() session: UserSession) {
@@ -40,6 +44,14 @@ export class PlansController {
     @Session() session: UserSession,
   ) {
     return this.plansService.findOne(session.user.id, id);
+  }
+
+  @Post(':id/pay')
+  pay(
+    @Param('id') id: string,
+    @Session() session: UserSession,
+  ) {
+    return this.paymentsService.createPaymentOrder(session.user.id, id);
   }
 
   @Post(':id/evaluate')

@@ -14,6 +14,10 @@ import { LedgerModule } from './ledger/ledger.module.js';
 import { AgentModule } from './agent/agent.module.js';
 import { PolicyModule } from './policy/policy.module.js';
 import { ReplanModule } from './replan/replan.module.js';
+import { PayPalModule } from './paypal/paypal.module.js';
+import { NegotiationModule } from './negotiation/negotiation.module.js';
+import { TimelineModule } from './timeline/timeline.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
 
 @Module({
   imports: [
@@ -26,6 +30,10 @@ import { ReplanModule } from './replan/replan.module.js';
     AgentModule,
     PolicyModule,
     ReplanModule,
+    PayPalModule,
+    NegotiationModule,
+    TimelineModule,
+    AnalyticsModule,
     ProductsModule,
     IntentsModule,
     PlansModule,

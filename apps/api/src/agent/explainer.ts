@@ -54,6 +54,47 @@ export function explainEvent(event: ExplainableEvent): string {
         ? `Explicit user authorization requested in accordance with 'Ask Every Time' policy mode.`
         : `Transaction authorization requested prior to PayPal order execution.`;
 
+    case 'APPROVAL_GRANTED':
+      return amountStr
+        ? `Purchase plan authorized for ${amountStr} ${currency}.`
+        : 'Purchase plan authorized and approved for checkout.';
+
+    case 'APPROVAL_REJECTED':
+      return 'Purchase plan authorization declined by user.';
+
+    case 'PAYMENT_CREATED':
+      return amountStr
+        ? `PayPal Order v2 initialized with intent CAPTURE for ${amountStr} ${currency}.`
+        : 'PayPal Order v2 initialized with intent CAPTURE.';
+
+    case 'PAYMENT_CAPTURED':
+      return amountStr
+        ? `Payment successfully captured for ${amountStr} ${currency} via PayPal Orders API.`
+        : 'Payment successfully captured via PayPal Orders API.';
+
+    case 'PAYMENT_FAILED':
+      return 'Payment execution failed during capture processing.';
+
+    case 'WEBHOOK_CONFIRMED':
+      return 'Cryptographic PayPal webhook verified and capture confirmed on immutable ledger.';
+
+    case 'BUDGET_REPLANNED':
+      return 'Autonomous replanning initiated to find compliant substitutions within budget.';
+
+    case 'REPLAN_PROPOSED':
+      return 'Alternative compliant purchase plan generated and proposed.';
+
+    case 'NEGOTIATION_ROUND':
+      return 'Autonomous negotiation proposal exchanged between Buyer and Merchant agents.';
+
+    case 'AGENT_NEGOTIATED':
+      return amountStr
+        ? `Price negotiation concluded with agreed order total of ${amountStr} ${currency}.`
+        : 'Autonomous price negotiation successfully concluded.';
+
+    case 'LEDGER_RECORDED':
+      return 'Transaction recorded to immutable append-only ledger.';
+
     case 'FORBIDDEN_ACTION_BLOCKED':
       return 'Unauthorized tool execution or policy bypass attempt blocked by security boundary.';
 

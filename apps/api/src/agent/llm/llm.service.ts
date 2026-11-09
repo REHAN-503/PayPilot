@@ -57,6 +57,10 @@ export class LlmService {
     }
   }
 
+  isDemoMode(): boolean {
+    return this.demoMode || !this.anthropicClient;
+  }
+
   getFixtureForPrompt(userText: string): FixtureEntry | null {
     const norm = normalizePrompt(userText);
 

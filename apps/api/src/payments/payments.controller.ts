@@ -14,9 +14,18 @@ const createOrderSchema = z.object({
   planId: z.string().min(1),
 });
 
+const captureSchema = z.object({
+  orderId: z.string().optional(),
+});
+
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get()
+  findAll(@Session() session: UserSession) {
+    return this.paymentsService.findAll(session.user.id);
+  }
 
   @Post('create-order')
   createOrder(
@@ -41,8 +50,22 @@ export class PaymentsController {
   capture(
     @Param('id') id: string,
     @Session() session: UserSession,
+    @Body() body: unknown,
   ) {
-    return this.paymentsService.capturePayment(session.user.id, id);
+    const parsed = captureSchema.safeParse(body ?? {});
+    return this.paymentsService.capturePayment(
+      session.user.id,
+      id,
+      parsed.success ? parsed.data.orderId : undefined,
+    );
+  }
+
+  @Post(':id/cancel')
+  cancel(
+    @Param('id') id: string,
+    @Session() session: UserSession,
+  ) {
+    return this.paymentsService.cancelPayment(session.user.id, id);
   }
 
   @Get(':id')

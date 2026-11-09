@@ -117,6 +117,7 @@ enum AgentActivityType {
   BUDGET_REPLANNED
   REPLAN_PROPOSED
   AGENT_NEGOTIATED
+  NEGOTIATION_ROUND
   POLICY_BLOCKED
   FORBIDDEN_ACTION_BLOCKED
   SYSTEM_EVENT
@@ -145,6 +146,7 @@ model User {
   payments     Payment[]
   transactions Transaction[]
   activities   AgentActivity[]
+  negotiations Negotiation[]
 
   @@unique([email])
   @@map("user")
@@ -220,6 +222,7 @@ model UserPolicy {
   requireApprovalAbove Decimal? @db.Decimal(12, 2)
   allowAutoExecute     Boolean  @default(false)
   allowNegotiation     Boolean  @default(false)
+  negotiationMaxRounds Int      @default(3)
 
   allowedCategories     String[] @default([])
   blockedCategories     String[] @default([])
@@ -245,8 +248,9 @@ model Product {
   description String?
   category    String?
 
-  price    Decimal @db.Decimal(12, 2)
-  currency String  @default("USD")
+  price    Decimal  @db.Decimal(12, 2)
+  minPrice Decimal? @db.Decimal(12, 2)
+  currency String   @default("USD")
 
   stock      Int     @default(0)
   imageUrl   String?
@@ -335,6 +339,7 @@ model PurchasePlan {
   riskAssessments RiskAssessment[]
   payments        Payment[]
   activities      AgentActivity[]
+  negotiations    Negotiation[]
 
   @@unique([intentId, version])
   @@index([userId, createdAt])
@@ -448,6 +453,7 @@ model Payment {
   approvedAt DateTime?
   capturedAt DateTime?
   refundedAt DateTime?
+  webhookConfirmedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -552,4 +558,60 @@ model AgentActivity {
   @@index([paymentId])
   @@index([type])
   @@map("agent_activity")
+}
+
+// ==========================================
+// BUYER-MERCHANT NEGOTIATION
+// ==========================================
+
+enum NegotiationStatus {
+  IN_PROGRESS
+  AGREED
+  FAILED
+  REJECTED
+}
+
+enum NegotiationParty {
+  BUYER
+  MERCHANT
+}
+
+model Negotiation {
+  id            String            @id @default(cuid())
+  userId        String
+  planId        String
+  status        NegotiationStatus @default(IN_PROGRESS)
+  initialPrice  Decimal           @db.Decimal(12, 2)
+  agreedPrice   Decimal?          @db.Decimal(12, 2)
+  buyerCeiling  Decimal           @db.Decimal(12, 2)
+  merchantFloor Decimal?          @db.Decimal(12, 2)
+  roundsCount   Int               @default(0)
+  maxRounds     Int               @default(3)
+  summary       String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan   PurchasePlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  rounds NegotiationRound[]
+
+  @@index([userId, createdAt])
+  @@index([planId])
+  @@map("negotiation")
+}
+
+model NegotiationRound {
+  id            String           @id @default(cuid())
+  negotiationId String
+  roundNumber   Int
+  speaker       NegotiationParty
+  action        String // PROPOSE, COUNTER, ACCEPT, REJECT
+  price         Decimal          @db.Decimal(12, 2)
+  rationale     String
+  createdAt     DateTime         @default(now())
+
+  negotiation Negotiation @relation(fields: [negotiationId], references: [id], onDelete: Cascade)
+
+  @@index([negotiationId, roundNumber])
+  @@map("negotiation_round")
 }

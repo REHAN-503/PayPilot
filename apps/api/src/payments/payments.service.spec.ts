@@ -2,41 +2,55 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PaymentsService } from './payments.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
-import type { PayPalService } from './paypal.service.js';
+import type { PayPalClient } from '../paypal/paypal.client.js';
+import type { LedgerService } from '../ledger/ledger.service.js';
 
 describe('PaymentsService Gating & Security', () => {
   let service: PaymentsService;
-  let prisma: {
-    purchasePlan: { findFirst: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
-    purchaseIntent: { update: ReturnType<typeof vi.fn> };
-    payment: { findFirst: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
-    transaction: { create: ReturnType<typeof vi.fn> };
-    agentActivity: { create: ReturnType<typeof vi.fn> };
-    $transaction: ReturnType<typeof vi.fn>;
-  };
-  let paypal: {
-    createOrder: ReturnType<typeof vi.fn>;
-    captureOrder: ReturnType<typeof vi.fn>;
-  };
+  let prisma: any;
+  let paypalClient: any;
+  let ledgerService: any;
 
   beforeEach(() => {
     prisma = {
       purchasePlan: { findFirst: vi.fn(), update: vi.fn() },
       purchaseIntent: { update: vi.fn() },
-      payment: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
-      transaction: { create: vi.fn() },
+      payment: {
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        upsert: vi.fn(),
+        update: vi.fn(),
+        findMany: vi.fn(),
+      },
+      userPolicy: {
+        upsert: vi.fn().mockResolvedValue({
+          currency: 'USD',
+          autonomyMode: 'AUTO_WITHIN_LIMITS',
+          maxTransactionAmount: 500,
+          dailySpendingLimit: 1000,
+          monthlySpendingLimit: 5000,
+          allowAutoExecute: true,
+        }),
+      },
+      transaction: { findMany: vi.fn().mockResolvedValue([]), create: vi.fn() },
       agentActivity: { create: vi.fn() },
       $transaction: vi.fn((fn) => (typeof fn === 'function' ? fn(prisma) : Promise.all(fn))),
     };
 
-    paypal = {
+    paypalClient = {
       createOrder: vi.fn(),
       captureOrder: vi.fn(),
+      getOrder: vi.fn(),
+    };
+
+    ledgerService = {
+      record: vi.fn(),
     };
 
     service = new PaymentsService(
       prisma as unknown as PrismaService,
-      paypal as unknown as PayPalService,
+      paypalClient as unknown as PayPalClient,
+      ledgerService as unknown as LedgerService,
     );
   });
 
@@ -44,70 +58,126 @@ describe('PaymentsService Gating & Security', () => {
     prisma.purchasePlan.findFirst.mockResolvedValue({
       id: 'plan-1',
       userId: 'user-1',
-      status: 'AWAITING_APPROVAL', // Not approved!
+      status: 'AWAITING_APPROVAL',
       total: '189.99',
       subtotal: '189.99',
       items: [],
       riskAssessments: [{ policyPassed: true }],
+      approvals: [{ id: 'appr-1', status: 'PENDING' }],
       intent: { id: 'intent-1' },
     });
 
     await expect(service.createPaymentOrder('user-1', 'plan-1')).rejects.toThrow(
       ForbiddenException,
     );
-    expect(paypal.createOrder).not.toHaveBeenCalled();
+    expect(paypalClient.createOrder).not.toHaveBeenCalled();
+    expect(prisma.agentActivity.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: 'FORBIDDEN_ACTION_BLOCKED',
+        }),
+      }),
+    );
   });
 
-  it('rejects order creation if plan failed policy check', async () => {
+  it('rejects order creation if plan is expired', async () => {
     prisma.purchasePlan.findFirst.mockResolvedValue({
       id: 'plan-1',
       userId: 'user-1',
       status: 'APPROVED',
+      expiresAt: new Date(Date.now() - 60000), // expired 1m ago
       total: '189.99',
       subtotal: '189.99',
       items: [],
-      riskAssessments: [{ policyPassed: false }], // Policy check failed!
+      riskAssessments: [{ policyPassed: true }],
+      approvals: [{ id: 'appr-1', status: 'APPROVED' }],
       intent: { id: 'intent-1' },
     });
 
     await expect(service.createPaymentOrder('user-1', 'plan-1')).rejects.toThrow(
-      BadRequestException,
+      ForbiddenException,
     );
-    expect(paypal.createOrder).not.toHaveBeenCalled();
+    expect(paypalClient.createOrder).not.toHaveBeenCalled();
   });
 
-  it('allows order creation when plan is APPROVED and policy passed', async () => {
+  it('strictly recomputes amounts from DB catalog items (ignoring client or stale values)', async () => {
     prisma.purchasePlan.findFirst.mockResolvedValue({
       id: 'plan-1',
       userId: 'user-1',
       status: 'APPROVED',
-      total: '189.99',
-      subtotal: '189.99',
-      items: [{ productName: 'SonicBuds Pro 2', productSku: 'ELEC-002', unitPrice: '189.99', quantity: 1 }],
+      total: '10.00', // Stale or tampered header total!
+      subtotal: '10.00',
+      items: [
+        {
+          productName: 'Developer Monitor',
+          productSku: 'ELEC-006',
+          unitPrice: '229.99',
+          quantity: 2,
+          product: { category: 'Electronics', stock: 10, status: 'ACTIVE' },
+        },
+      ],
       riskAssessments: [{ policyPassed: true }],
+      approvals: [{ id: 'appr-1', status: 'APPROVED' }],
       intent: { id: 'intent-1', status: 'APPROVED' },
     });
-    prisma.payment.findFirst.mockResolvedValue(null);
-    paypal.createOrder.mockResolvedValue({
-      id: 'MOCK-ORDER-123',
-      status: 'CREATED',
-      approveUrl: 'https://sandbox.paypal.com/approve',
-    });
-    prisma.payment.create.mockResolvedValue({
+
+    prisma.payment.findUnique.mockResolvedValue(null);
+    prisma.payment.upsert.mockResolvedValue({
       id: 'pay-1',
-      paypalOrderId: 'MOCK-ORDER-123',
+      amount: '459.98',
     });
 
-    const result = await service.createPaymentOrder('user-1', 'plan-1');
+    paypalClient.createOrder.mockResolvedValue({
+      id: 'ORDER-12345',
+      status: 'CREATED',
+      links: [{ rel: 'approve', href: 'https://sandbox.paypal.com/checkout' }],
+    });
 
-    expect(paypal.createOrder).toHaveBeenCalledWith(
+    prisma.payment.update.mockResolvedValue({ id: 'pay-1', status: 'PAYER_ACTION_REQUIRED' });
+    prisma.purchasePlan.update.mockResolvedValue({});
+    prisma.purchaseIntent.update.mockResolvedValue({});
+
+    await service.createPaymentOrder('user-1', 'plan-1');
+
+    // 229.99 * 2 = 459.98 recomputed from DB items!
+    expect(paypalClient.createOrder).toHaveBeenCalledWith(
       expect.objectContaining({
-        planId: 'plan-1',
-        total: 189.99,
-        subtotal: 189.99,
+        total: 459.98,
+        subtotal: 459.98,
+        items: expect.arrayContaining([
+          expect.objectContaining({ unitPrice: 229.99, quantity: 2 }),
+        ]),
       }),
     );
-    expect(result.orderId).toBe('MOCK-ORDER-123');
+  });
+
+  it('rejects capture when provided orderId does not match payment', async () => {
+    prisma.payment.findFirst.mockResolvedValue({
+      id: 'pay-1',
+      userId: 'user-1',
+      status: 'PAYER_ACTION_REQUIRED',
+      paypalOrderId: 'CORRECT-ORDER-ID',
+      plan: { items: [], intent: {} },
+    });
+
+    await expect(
+      service.capturePayment('user-1', 'pay-1', 'FOREIGN-ORDER-ID'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('exposes recommendedNextAction on findOne', async () => {
+    prisma.payment.findFirst.mockResolvedValue({
+      id: 'pay-failed',
+      userId: 'user-1',
+      status: 'FAILED',
+      updatedAt: new Date(),
+      transactions: [],
+      activities: [],
+      plan: { items: [] },
+    });
+
+    const result = await service.findOne('user-1', 'pay-failed');
+    expect(result.recommendedNextAction).toBe('RETRY_PAYMENT');
   });
 
   it('throws NotFoundException when capturing non-existent payment', async () => {
