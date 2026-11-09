@@ -90,7 +90,7 @@ export default function AnalyticsPage() {
       headerName: 'Action Type',
       width: 180,
       cellRenderer: (params: CustomCellRendererProps) => (
-        <span className="font-mono text-xs font-semibold text-blue-400">
+        <span className="font-mono text-xs font-semibold text-[var(--ledger)]">
           {params.value}
         </span>
       ),
@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
       headerName: 'Actor',
       width: 110,
       cellRenderer: (params: CustomCellRendererProps) => (
-        <span className="px-2 py-0.5 rounded bg-slate-800 text-[11px] font-mono font-medium text-slate-300">
+        <span className="px-2 py-0.5 rounded bg-[var(--paper-2)] text-[11px] font-mono font-medium text-[var(--ink-2)]">
           {params.value}
         </span>
       ),
@@ -110,7 +110,7 @@ export default function AnalyticsPage() {
       headerName: 'Activity Title',
       width: 240,
       cellRenderer: (params: CustomCellRendererProps) => (
-        <span className="font-semibold text-slate-100 text-xs truncate">{params.value}</span>
+        <span className="font-semibold text-[var(--ink)] text-xs truncate">{params.value}</span>
       ),
     },
     {
@@ -119,7 +119,7 @@ export default function AnalyticsPage() {
       flex: 1,
       minWidth: 260,
       cellRenderer: (params: CustomCellRendererProps) => (
-        <span className="text-slate-400 text-xs truncate">{params.value || '—'}</span>
+        <span className="text-[var(--ink-3)] text-xs truncate">{params.value || '—'}</span>
       ),
     },
   ], []);
@@ -135,11 +135,11 @@ export default function AnalyticsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-              <BarChart3 className="w-6 h-6 text-blue-400" />
+            <h1 className="text-2xl font-black text-[var(--ink)] tracking-tight flex items-center gap-2.5">
+              <BarChart3 className="w-6 h-6 text-[var(--ledger)]" />
               Procurement Analytics & Governance KPIs
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-[var(--ink-3)] mt-1">
               Financial intelligence, policy gate enforcement metrics, and live agent activity logs.
             </p>
           </div>
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
             variant="outline"
             size="sm"
             onClick={handleRefreshAll}
-            className="text-xs text-slate-300"
+            className="text-xs text-[var(--ink-2)]"
           >
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
             Refresh Analytics
@@ -157,70 +157,70 @@ export default function AnalyticsPage() {
 
         {/* 4 KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+          <Card className="border-[var(--rule)] bg-[var(--card)] p-5 ">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[var(--ink-3)] uppercase tracking-wider">
                 Total Spend
               </span>
-              <div className="p-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
+              <div className="p-2 rounded-[var(--radius)] bg-[var(--ledger)]/20 text-[var(--ledger)] border border-[var(--ledger)]">
                 <DollarSign className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-black text-white mt-3 font-mono">
+            <div className="text-2xl font-black text-[var(--ink)] mt-3 font-mono">
               {formatCurrency(summary?.totalSpend ?? 0)}
             </div>
-            <span className="text-[11px] text-emerald-400 font-medium mt-1 block">
+            <span className="text-[11px] text-[var(--verdigris)] font-medium mt-1 block">
               Immutable Captured Ledger
             </span>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+          <Card className="border-[var(--rule)] bg-[var(--card)] p-5 ">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[var(--ink-3)] uppercase tracking-wider">
                 Capture Success Rate
               </span>
-              <div className="p-2 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30">
+              <div className="p-2 rounded-[var(--radius)] bg-[var(--paper-2)] text-[var(--verdigris)] border border-[var(--verdigris)]">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-black text-white mt-3 font-mono">
+            <div className="text-2xl font-black text-[var(--ink)] mt-3 font-mono">
               {summary?.successRate ?? 100}%
             </div>
-            <span className="text-[11px] text-slate-400 mt-1 block">
+            <span className="text-[11px] text-[var(--ink-3)] mt-1 block">
               {summary?.webhookConfirmedCount ?? 0} Webhook Confirmed
             </span>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+          <Card className="border-[var(--rule)] bg-[var(--card)] p-5 ">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[var(--ink-3)] uppercase tracking-wider">
                 Policy Blocks Avoided
               </span>
-              <div className="p-2 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30">
+              <div className="p-2 rounded-[var(--radius)] bg-[var(--vermilion)]/20 text-[var(--vermilion)] border border-[var(--vermilion)]">
                 <ShieldBan className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-black text-white mt-3 font-mono">
+            <div className="text-2xl font-black text-[var(--ink)] mt-3 font-mono">
               {summary?.blockedByPolicyCount ?? 0}
             </div>
-            <span className="text-[11px] text-slate-400 mt-1 block">
+            <span className="text-[11px] text-[var(--ink-3)] mt-1 block">
               Protected by Hard Ceilings
             </span>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+          <Card className="border-[var(--rule)] bg-[var(--card)] p-5 ">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-[var(--ink-3)] uppercase tracking-wider">
                 Avg Negotiation Savings
               </span>
-              <div className="p-2 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
+              <div className="p-2 rounded-[var(--radius)] bg-[var(--brass)]/20 text-[var(--brass)] border border-[var(--brass)]">
                 <TrendingDown className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-2xl font-black text-emerald-400 mt-3 font-mono">
+            <div className="text-2xl font-black text-[var(--verdigris)] mt-3 font-mono">
               +{summary?.avgNegotiationSavingsPct ?? 9.3}%
             </div>
-            <span className="text-[11px] text-slate-400 mt-1 block">
+            <span className="text-[11px] text-[var(--ink-3)] mt-1 block">
               Autonomous Bot Concessions
             </span>
           </Card>
@@ -229,9 +229,9 @@ export default function AnalyticsPage() {
         {/* 2 Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Chart 1: Spend Over Time (7 cols) */}
-          <Card className="lg:col-span-7 border-slate-800 bg-slate-900/80 p-6 shadow-xl">
-            <h3 className="text-sm font-bold text-white mb-1">Cumulative Ledger Spend (USD)</h3>
-            <p className="text-xs text-slate-400 mb-6">Historical authorized PayPal Orders captured</p>
+          <Card className="lg:col-span-7 border-[var(--rule)] bg-[var(--card)] p-6 ">
+            <h3 className="text-sm font-bold text-[var(--ink)] mb-1">Cumulative Ledger Spend (USD)</h3>
+            <p className="text-xs text-[var(--ink-3)] mb-6">Historical authorized PayPal Orders captured</p>
 
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -255,10 +255,10 @@ export default function AnalyticsPage() {
           </Card>
 
           {/* Chart 2: Governance Outcomes (5 cols) */}
-          <Card className="lg:col-span-5 border-slate-800 bg-slate-900/80 p-6 shadow-xl flex flex-col justify-between">
+          <Card className="lg:col-span-5 border-[var(--rule)] bg-[var(--card)] p-6  flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-bold text-white mb-1">Governance Outcomes Distribution</h3>
-              <p className="text-xs text-slate-400 mb-4">Autonomous execution vs replan vs policy block</p>
+              <h3 className="text-sm font-bold text-[var(--ink)] mb-1">Governance Outcomes Distribution</h3>
+              <p className="text-xs text-[var(--ink-3)] mb-4">Autonomous execution vs replan vs policy block</p>
             </div>
 
             <div className="h-60 w-full flex items-center justify-center">
@@ -302,20 +302,20 @@ export default function AnalyticsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Bot className="w-5 h-5 text-violet-400" />
+              <h2 className="text-lg font-bold text-[var(--ink)] flex items-center gap-2">
+                <Bot className="w-5 h-5 text-[var(--brass)]" />
                 Live Agent Activity Ledger (AG Grid)
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--ink-3)]">
                 Detailed historical audit records with metadata payloads
               </p>
             </div>
-            <span className="text-xs text-slate-400 font-mono">
+            <span className="text-xs text-[var(--ink-3)] font-mono">
               {activities?.length || 0} Event Rows
             </span>
           </div>
 
-          <div className="h-96 w-full rounded-2xl overflow-hidden shadow-2xl">
+          <div className="h-96 w-full rounded-[var(--radius)] overflow-hidden ">
             <div className="ag-theme-quartz-dark w-full h-full">
               <AgGridReact
                 rowData={activities || []}

@@ -13,7 +13,12 @@ export class PrismaService
       connectionString: configService.getOrThrow<string>('DATABASE_URL'),
     });
 
-    super({ adapter });
+    super({
+      adapter,
+      transactionOptions: {
+        timeout: 30_000,
+      },
+    });
   }
 
   async onModuleInit() {

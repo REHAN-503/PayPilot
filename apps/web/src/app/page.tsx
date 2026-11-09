@@ -182,34 +182,34 @@ export default function CommandCenterPage() {
     <DashboardShell>
       <div className="space-y-8">
         {/* Hero Section & Goal Input */}
-        <div className="space-y-4">
+        <div className="desk-enter space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-black text-[var(--ink)] tracking-tight flex items-center gap-2.5">
                 Autonomous Procurement Center
                 <Badge variant="default" className="py-0.5 px-2 text-[10px]">
                   Agent v2.0
                 </Badge>
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              <p className="text-xs sm:text-sm text-[var(--ink-3)] mt-1">
                 Natural-language intent parsing with deterministic policy bounds and PayPal smart execution.
               </p>
             </div>
           </div>
 
           {/* Goal Textarea Input */}
-          <div className="relative rounded-3xl p-2 bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 shadow-2xl">
+          <div className="paper-lift relative rounded-3xl p-2 bg-[var(--card)] border border-[var(--rule)] ">
             <Textarea
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               placeholder="e.g. I need a developer monitor under $250. Prioritize text clarity and value."
-              className="text-base sm:text-lg min-h-[100px] border-none bg-transparent focus-visible:ring-0 p-4 text-white placeholder:text-slate-500"
+              className="text-base sm:text-lg min-h-[100px] border-none bg-transparent focus-visible:ring-0 p-4 text-[var(--ink)] placeholder:text-[var(--ink-3)]"
             />
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3 py-2 border-t border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3 py-2 border-t border-[var(--rule)]">
               {/* Chips container */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 shrink-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-3)] shrink-0">
                   Demo Chips:
                 </span>
                 {DEMO_PROMPTS.map((prompt) => (
@@ -219,9 +219,9 @@ export default function CommandCenterPage() {
                       setGoal(prompt.text);
                       handlePlanSubmit(prompt.text);
                     }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-800/80 hover:bg-blue-600/20 hover:border-blue-500/40 border border-slate-700/60 text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius)] text-xs font-medium bg-[var(--paper-2)] hover:bg-[var(--ledger)]/20 hover:border-[var(--rule)] border border-[var(--rule)]/60 text-[var(--ink-2)] hover:text-[var(--ink)] transition-all shrink-0 cursor-pointer"
                   >
-                    <span className="text-blue-400 font-mono text-[10px]">{prompt.tag}</span>
+                    <span className="text-[var(--ledger)] font-mono text-[10px]">{prompt.tag}</span>
                     <span>{prompt.label}</span>
                   </button>
                 ))}
@@ -252,11 +252,11 @@ export default function CommandCenterPage() {
         </div>
 
         {/* Live Agent Execution & Current Plan Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="desk-enter desk-enter-delay-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Live Agent Stepper Panel (5 cols) */}
           <div className="lg:col-span-5">
             {degradedMode && (
-              <p className="text-[11px] text-amber-300">
+              <p className="text-[11px] text-[var(--amber)]">
                 Degraded mode: live activity streaming is unavailable.
               </p>
             )}
@@ -266,8 +266,8 @@ export default function CommandCenterPage() {
           {/* Right: Current / Latest Plan Showcase (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
             {latestPlan ? (
-              <Card className="border-slate-800 bg-slate-900/80 overflow-hidden shadow-2xl">
-                <CardHeader className="border-b border-slate-800/80 bg-slate-950/40 pb-4">
+              <Card className="border-[var(--rule)] bg-[var(--card)] overflow-hidden ">
+                <CardHeader className="border-b border-[var(--rule)] bg-[var(--paper)]/40 pb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge
@@ -281,27 +281,27 @@ export default function CommandCenterPage() {
                       >
                         {latestPlan.status.replace('_', ' ')}
                       </Badge>
-                      <span className="text-xs text-slate-400 font-mono">
+                      <span className="text-xs text-[var(--ink-3)] font-mono">
                         Plan v{latestPlan.version}
                       </span>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-2xl font-black text-white">
+                      <span className="text-2xl font-black text-[var(--ink)]">
                         {formatCurrency(latestPlan.total)}
                       </span>
-                      <span className="text-xs text-slate-400 ml-1.5">USD</span>
+                      <span className="text-xs text-[var(--ink-3)] ml-1.5">USD</span>
                     </div>
                   </div>
-                  <CardTitle className="text-lg font-bold text-white mt-1">
+                  <CardTitle className="text-lg font-bold text-[var(--ink)] mt-1">
                     {latestPlan.items?.[0]?.productName || 'Recommended Product Package'}
                   </CardTitle>
                 </CardHeader>
 
                 <CardContent className="p-6 space-y-5">
                   {/* Explanation rationale */}
-                  <div className="p-3.5 rounded-2xl bg-blue-950/20 border border-blue-500/20 text-xs text-blue-200 leading-relaxed">
-                    <div className="font-semibold text-blue-400 mb-1 flex items-center gap-1.5">
+                  <div className="p-3.5 rounded-[var(--radius)] bg-[var(--paper-2)] border border-[var(--ledger)]/20 text-xs text-[var(--ledger)] leading-relaxed">
+                    <div className="font-semibold text-[var(--ledger)] mb-1 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5" />
                       Why This Pick
                     </div>
@@ -311,21 +311,21 @@ export default function CommandCenterPage() {
 
                   {/* Items list */}
                   <div className="space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-3)]">
                       Procurement Items
                     </div>
                     {latestPlan.items?.map((it) => (
                       <div
                         key={it.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs"
+                        className="flex items-center justify-between p-3 rounded-[var(--radius)] bg-[var(--paper)]/60 border border-[var(--rule)] text-xs"
                       >
                         <div>
-                          <div className="font-semibold text-slate-200">{it.productName}</div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="font-semibold text-[var(--ink)]">{it.productName}</div>
+                          <div className="text-[11px] text-[var(--ink-3)]">
                             SKU: {it.productSku || 'ELEC-SKU'} • Qty: {it.quantity}
                           </div>
                         </div>
-                        <div className="font-bold text-slate-100 font-mono text-sm">
+                        <div className="font-bold text-[var(--ink)] font-mono text-sm">
                           {formatCurrency(it.lineTotal)}
                         </div>
                       </div>
@@ -361,10 +361,10 @@ export default function CommandCenterPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="flex flex-col items-center justify-center p-12 rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 text-center">
-                <ShoppingBag className="w-12 h-12 text-slate-600 mb-3" />
-                <h3 className="text-base font-semibold text-slate-300">No active plan generated yet</h3>
-                <p className="text-xs text-slate-500 max-w-sm mt-1">
+              <div className="flex flex-col items-center justify-center p-12 rounded-3xl border border-dashed border-[var(--rule)] bg-[var(--card)]/30 text-center">
+                <ShoppingBag className="w-12 h-12 text-[var(--ink-3)] mb-3" />
+                <h3 className="text-base font-semibold text-[var(--ink-2)]">No active plan generated yet</h3>
+                <p className="text-xs text-[var(--ink-3)] max-w-sm mt-1">
                   Type your procurement requirement in the goal box above or click a demo chip to plan autonomously.
                 </p>
               </div>
@@ -372,23 +372,23 @@ export default function CommandCenterPage() {
 
             {/* Quick Metrics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold">Daily Limit Left</div>
-                <div className="text-lg font-bold text-white mt-1">
+              <div className="p-4 rounded-[var(--radius)] bg-[var(--card)]/70 border border-[var(--rule)]">
+                <div className="text-[11px] text-[var(--ink-3)] uppercase font-semibold">Daily Limit Left</div>
+                <div className="text-lg font-bold text-[var(--ink)] mt-1">
                   {formatCurrency(metrics?.dailyRemaining ?? 1000)}
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold">Max Transaction</div>
-                <div className="text-lg font-bold text-white mt-1">
+              <div className="p-4 rounded-[var(--radius)] bg-[var(--card)]/70 border border-[var(--rule)]">
+                <div className="text-[11px] text-[var(--ink-3)] uppercase font-semibold">Max Transaction</div>
+                <div className="text-lg font-bold text-[var(--ink)] mt-1">
                   {formatCurrency(policy?.maxTransactionAmount ?? 500)}
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold">Autonomy Mode</div>
-                <div className="text-sm font-bold text-blue-400 mt-1.5 truncate">
+              <div className="p-4 rounded-[var(--radius)] bg-[var(--card)]/70 border border-[var(--rule)]">
+                <div className="text-[11px] text-[var(--ink-3)] uppercase font-semibold">Autonomy Mode</div>
+                <div className="text-sm font-bold text-[var(--ledger)] mt-1.5 truncate">
                   {policy?.autonomyMode?.replace(/_/g, ' ') || 'ASK EVERY TIME'}
                 </div>
               </div>
@@ -397,20 +397,20 @@ export default function CommandCenterPage() {
         </div>
 
         {/* Recent Trust Timeline Section */}
-        <div className="space-y-4 pt-4 border-t border-slate-800/80">
+        <div className="space-y-4 pt-4 border-t border-[var(--rule)]">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold text-[var(--ink)] flex items-center gap-2">
                 Recent Audit Timeline
-                <span className="text-xs font-normal text-slate-400 font-mono">
+                <span className="text-xs font-normal text-[var(--ink-3)] font-mono">
                   ({timelineData?.count || 0} events recorded)
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">Cryptographically verifiable execution trace</p>
+              <p className="text-xs text-[var(--ink-3)]">Cryptographically verifiable execution trace</p>
             </div>
 
             <Link href="/timeline">
-              <Button variant="ghost" size="sm" className="text-xs text-blue-400 hover:text-white">
+              <Button variant="ghost" size="sm" className="text-xs text-[var(--ledger)] hover:text-[var(--ink)]">
                 View Full Timeline
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>

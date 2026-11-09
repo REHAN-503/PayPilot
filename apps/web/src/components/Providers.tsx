@@ -33,15 +33,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <TooltipProvider>
           {children}
           <Toaster
-            theme="dark"
+            theme="system"
             position="top-right"
             richColors
             closeButton
             toastOptions={{
               style: {
-                background: '#0d1424',
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#f8fafc',
+                background: 'var(--card)',
+                borderColor: 'var(--rule)',
+                color: 'var(--ink)',
               },
             }}
           />
@@ -50,4 +50,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </QueryClientProvider>
   );
 }
-

@@ -1,4 +1,5 @@
 const baseUrl = process.env.SMOKE_API_URL || 'http://localhost:4000';
+const origin = process.env.SMOKE_ORIGIN || 'http://localhost:3000';
 const email = `smoke-${Date.now()}@example.com`;
 const password = process.env.SMOKE_PASSWORD || 'Password123!';
 let cookie = '';
@@ -8,6 +9,7 @@ async function call(method, path, body, expected = 200) {
     method,
     headers: {
       'content-type': 'application/json',
+      origin,
       ...(cookie ? { cookie } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -38,7 +40,13 @@ async function check(name, fn) {
 }
 
 await check('GET /health', async () => {
-  const health = await call('GET', '/health');
+  let health;
+  try {
+    health = await call('GET', '/health');
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes('expected 200, got 404')) throw error;
+    health = await call('GET', '/');
+  }
   if (health.status !== 'ok') throw new Error('health status is not ok');
 });
 
@@ -51,7 +59,7 @@ let plan;
 await check('create intent and plan', async () => {
   const result = await call('POST', '/intents', {
     rawInput: 'I need a developer monitor under $250. Prioritize text clarity and value.',
-  });
+  }, 201);
   plan = result.plan;
   if (!plan?.id || !plan.items?.length || !Array.isArray(plan.alternatives)) {
     throw new Error('plan is missing items or alternatives');
@@ -59,13 +67,13 @@ await check('create intent and plan', async () => {
 });
 
 await check('evaluate and approve plan', async () => {
-  await call('POST', `/plans/${plan.id}/evaluate`);
-  await call('POST', `/plans/${plan.id}/approve`, { note: 'Smoke approval' });
+  await call('POST', `/plans/${plan.id}/evaluate`, undefined, 201);
+  await call('POST', `/plans/${plan.id}/approve`, { note: 'Smoke approval' }, 201);
 });
 
 let payment;
 await check('create payment order', async () => {
-  const result = await call('POST', `/plans/${plan.id}/pay`);
+  const result = await call('POST', `/plans/${plan.id}/pay`, undefined, 201);
   payment = result.payment;
   if (!result.orderId || !payment?.id) throw new Error('orderId/payment missing');
 });

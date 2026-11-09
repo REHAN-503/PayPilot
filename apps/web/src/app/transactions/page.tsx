@@ -50,8 +50,8 @@ export default function TransactionsPage() {
         const data = params.data as AnalyticsTransactionRow;
         return (
           <div className="flex flex-col justify-center h-full">
-            <span className="font-semibold text-slate-100 truncate">{data?.productName}</span>
-            <span className="text-[10px] text-slate-400 font-mono">
+            <span className="font-semibold text-[var(--ink)] truncate">{data?.productName}</span>
+            <span className="text-[10px] text-[var(--ink-3)] font-mono">
               SKU: {data?.productSku || 'CATALOG-SKU'} • {data?.category || 'General'}
             </span>
           </div>
@@ -63,7 +63,7 @@ export default function TransactionsPage() {
       headerName: 'Amount',
       width: 120,
       cellRenderer: (params: CustomCellRendererProps<AnalyticsTransactionRow>) => (
-        <span className="font-mono font-bold text-white">
+        <span className="font-mono font-bold text-[var(--ink)]">
           {formatCurrency(params.value)}
         </span>
       ),
@@ -79,8 +79,8 @@ export default function TransactionsPage() {
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
               isCaptured
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                ? 'bg-[var(--verdigris)]/20 text-[var(--verdigris)] border border-[var(--verdigris)]'
+                : 'bg-[var(--amber)]/20 text-[var(--amber)] border border-[var(--amber)]'
             }`}
           >
             {status}
@@ -95,13 +95,13 @@ export default function TransactionsPage() {
       cellRenderer: (params: CustomCellRendererProps<AnalyticsTransactionRow>) => {
         const confirmed = params.value;
         return confirmed ? (
-          <span className="inline-flex items-center gap-1 text-xs text-blue-400 font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />
+          <span className="inline-flex items-center gap-1 text-xs text-[var(--ledger)] font-medium">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--ledger)]" />
             Confirmed
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs text-amber-400 font-medium">
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
+          <span className="inline-flex items-center gap-1 text-xs text-[var(--amber)] font-medium">
+            <Clock className="w-3.5 h-3.5 text-[var(--amber)]" />
             Pending Delivery
           </span>
         );
@@ -118,10 +118,10 @@ export default function TransactionsPage() {
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold ${
               level === 'LOW'
-                ? 'bg-emerald-500/10 text-emerald-400'
+                ? 'bg-[var(--verdigris)]/10 text-[var(--verdigris)]'
                 : level === 'MEDIUM'
-                ? 'bg-amber-500/10 text-amber-300'
-                : 'bg-red-500/10 text-red-400'
+                ? 'bg-[var(--amber)]/10 text-[var(--amber)]'
+                : 'bg-[var(--vermilion)]/10 text-[var(--vermilion)]'
             }`}
           >
             {level} ({score})
@@ -136,11 +136,11 @@ export default function TransactionsPage() {
       cellRenderer: (params: CustomCellRendererProps<AnalyticsTransactionRow>) => {
         const savings = Number(params.value);
         return savings > 0 ? (
-          <span className="text-emerald-400 font-mono font-semibold">
+          <span className="text-[var(--verdigris)] font-mono font-semibold">
             +{formatCurrency(savings)}
           </span>
         ) : (
-          <span className="text-slate-500 font-mono">—</span>
+          <span className="text-[var(--ink-3)] font-mono">—</span>
         );
       },
     },
@@ -154,7 +154,7 @@ export default function TransactionsPage() {
         return (
           <Link
             href={`/payments/${paymentId}`}
-            className="text-xs text-blue-400 hover:text-white font-medium inline-flex items-center gap-1"
+            className="text-xs text-[var(--ledger)] hover:text-[var(--ink)] font-medium inline-flex items-center gap-1"
           >
             Details <ArrowRight className="w-3 h-3" />
           </Link>
@@ -175,11 +175,11 @@ export default function TransactionsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-              <Receipt className="w-6 h-6 text-blue-400" />
+            <h1 className="text-2xl font-black text-[var(--ink)] tracking-tight flex items-center gap-2.5">
+              <Receipt className="w-6 h-6 text-[var(--ledger)]" />
               Transactions & Immutable Ledger
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-[var(--ink-3)] mt-1">
               High-performance AG Grid ledger with cryptographic webhook confirmations and policy audit metadata.
             </p>
           </div>
@@ -189,7 +189,7 @@ export default function TransactionsPage() {
               variant="outline"
               size="sm"
               onClick={handleExportCsv}
-              className="text-xs text-slate-300 hover:text-white"
+              className="text-xs text-[var(--ink-2)] hover:text-[var(--ink)]"
             >
               <Download className="w-3.5 h-3.5 mr-1.5" />
               Export CSV
@@ -199,7 +199,7 @@ export default function TransactionsPage() {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="text-xs text-slate-300"
+              className="text-xs text-[var(--ink-2)]"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
               Refresh
@@ -210,24 +210,24 @@ export default function TransactionsPage() {
         {/* Search Bar & Quick Filter */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-[var(--ink-3)] absolute left-3 top-3" />
             <Input
               value={quickFilterText}
               onChange={(e) => setQuickFilterText(e.target.value)}
               placeholder="Quick search across products, status, or transaction keys..."
-              className="pl-9 h-10 rounded-xl bg-slate-900 border-slate-800 text-xs text-white"
+              className="pl-9 h-10 rounded-[var(--radius)] bg-[var(--card)] border-[var(--rule)] text-xs text-[var(--ink)]"
             />
           </div>
-          <span className="text-xs text-slate-400 font-mono">
+          <span className="text-xs text-[var(--ink-3)] font-mono">
             {rows?.length || 0} Ledger Records
           </span>
         </div>
 
         {/* AG Grid Table Container */}
         {isLoading ? (
-          <Skeleton className="h-[520px] w-full rounded-2xl" />
+          <Skeleton className="h-[520px] w-full rounded-[var(--radius)]" />
         ) : (
-          <div className="h-[560px] w-full rounded-2xl overflow-hidden shadow-2xl">
+          <div className="h-[560px] w-full rounded-[var(--radius)] overflow-hidden ">
             <div className="ag-theme-quartz-dark w-full h-full">
               <AgGridReact
                 ref={gridRef}

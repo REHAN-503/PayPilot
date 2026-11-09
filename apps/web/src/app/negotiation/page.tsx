@@ -107,11 +107,11 @@ function NegotiationContent() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-              <Handshake className="w-6 h-6 text-violet-400" />
+            <h1 className="text-2xl font-black text-[var(--ink)] tracking-tight flex items-center gap-2.5">
+              <Handshake className="w-6 h-6 text-[var(--brass)]" />
               Autonomous Agent ↔ Merchant Negotiation
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-[var(--ink-3)] mt-1">
               Multi-round concession bargaining. Monotone rules enforce buyer ceilings and preserve hidden merchant floors.
             </p>
           </div>
@@ -121,7 +121,7 @@ function NegotiationContent() {
             <select
               value={effectivePlanId}
               onChange={(e) => setSelectedPlanId(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 rounded-[var(--radius)] bg-[var(--card)] border border-[var(--rule)] text-xs text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {plans?.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -163,26 +163,26 @@ function NegotiationContent() {
 
         {/* Live Animated Price Ticker Bar */}
         {isNegotiating && (
-          <div className="text-xs text-blue-300 flex items-center gap-2">
+          <div className="text-xs text-[var(--ledger)] flex items-center gap-2">
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             Negotiation in progress — rounds are being refreshed from the server.
           </div>
         )}
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--rule)]  flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
+            <div className="p-3 rounded-[var(--radius)] bg-[var(--ledger)]/20 text-[var(--ledger)] border border-[var(--ledger)]">
               <TrendingDown className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <div className="text-[11px] uppercase font-semibold text-slate-400">
+              <div className="text-[11px] uppercase font-semibold text-[var(--ink-3)]">
                 Live Negotiated Price Ticker
               </div>
               <div className="flex items-baseline gap-3 mt-0.5">
-                <span className="text-3xl font-black text-white tracking-tight font-mono">
+                <span className="text-3xl font-black text-[var(--ink)] tracking-tight font-mono">
                   {formatCurrency(currentPrice)}
                 </span>
                 {savings > 0 && (
-                  <span className="text-sm font-bold text-emerald-400 font-mono">
+                  <span className="text-sm font-bold text-[var(--verdigris)] font-mono">
                     Save {formatCurrency(savings)} ({savingsPct}%)
                   </span>
                 )}
@@ -191,16 +191,16 @@ function NegotiationContent() {
           </div>
 
           <div className="flex items-center gap-4 text-right">
-            <div className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-              <div className="text-[10px] text-slate-400 font-semibold uppercase">Buyer Ceiling</div>
-              <div className="font-bold text-blue-400 font-mono">
+            <div className="px-3.5 py-1.5 rounded-[var(--radius)] bg-[var(--paper)] border border-[var(--rule)] text-xs">
+              <div className="text-[10px] text-[var(--ink-3)] font-semibold uppercase">Buyer Ceiling</div>
+              <div className="font-bold text-[var(--ledger)] font-mono">
                 {formatCurrency(displayedNegotiation?.buyerCeiling ?? initialPrice)}
               </div>
             </div>
 
-            <div className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-              <div className="text-[10px] text-slate-400 font-semibold uppercase">Merchant Floor</div>
-              <div className="font-bold text-slate-400 font-mono italic">
+            <div className="px-3.5 py-1.5 rounded-[var(--radius)] bg-[var(--paper)] border border-[var(--rule)] text-xs">
+              <div className="text-[10px] text-[var(--ink-3)] font-semibold uppercase">Merchant Floor</div>
+              <div className="font-bold text-[var(--ink-3)] font-mono italic">
                 Secret (Server-Guarded)
               </div>
             </div>
@@ -210,15 +210,15 @@ function NegotiationContent() {
         {/* Two-Column Agent Chat Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Buyer Agent Column */}
-          <Card className="border-slate-800 bg-slate-900/70 p-5 shadow-xl flex flex-col">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+          <Card className="border-[var(--rule)] bg-[var(--card)]/70 p-5  flex flex-col">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--rule)]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
+                <div className="p-2 rounded-[var(--radius)] bg-[var(--ledger)]/20 text-[var(--ledger)] border border-[var(--ledger)]">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Buyer Procurement Agent</h3>
-                  <p className="text-[11px] text-slate-400">Autonomous bidding within spending ceiling</p>
+                  <h3 className="font-bold text-sm text-[var(--ink)]">Buyer Procurement Agent</h3>
+                  <p className="text-[11px] text-[var(--ink-3)]">Autonomous bidding within spending ceiling</p>
                 </div>
               </div>
               <Badge variant="default">Buyer Bot</Badge>
@@ -233,21 +233,21 @@ function NegotiationContent() {
                       key={round.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="p-4 rounded-2xl bg-blue-950/20 border border-blue-500/30 space-y-2"
+                      className="p-4 rounded-[var(--radius)] bg-[var(--paper-2)] border border-[var(--ledger)] space-y-2"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-blue-300">
+                        <span className="font-bold text-xs text-[var(--ledger)]">
                           Round {round.roundNumber} Offer
                         </span>
-                        <span className="font-mono text-base font-black text-white">
+                        <span className="font-mono text-base font-black text-[var(--ink)]">
                           {formatCurrency(round.price)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed">{round.rationale}</p>
+                      <p className="text-xs text-[var(--ink-2)] leading-relaxed">{round.rationale}</p>
                     </motion.div>
                   ))
               ) : (
-                <div className="text-center py-16 text-slate-500 text-xs">
+                <div className="text-center py-16 text-[var(--ink-3)] text-xs">
                   Click &apos;Start Negotiation&apos; to watch the Buyer Agent propose volume discount offers.
                 </div>
               )}
@@ -255,15 +255,15 @@ function NegotiationContent() {
           </Card>
 
           {/* Merchant Agent Column */}
-          <Card className="border-slate-800 bg-slate-900/70 p-5 shadow-xl flex flex-col">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+          <Card className="border-[var(--rule)] bg-[var(--card)]/70 p-5  flex flex-col">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--rule)]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
+                <div className="p-2 rounded-[var(--radius)] bg-[var(--brass)]/20 text-[var(--brass)] border border-[var(--brass)]">
                   <Store className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Merchant Sales Agent</h3>
-                  <p className="text-[11px] text-slate-400">Inventory pricing bot guarding margin floor</p>
+                  <h3 className="font-bold text-sm text-[var(--ink)]">Merchant Sales Agent</h3>
+                  <p className="text-[11px] text-[var(--ink-3)]">Inventory pricing bot guarding margin floor</p>
                 </div>
               </div>
               <Badge variant="agent">Merchant Bot</Badge>
@@ -278,21 +278,21 @@ function NegotiationContent() {
                       key={round.id}
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="p-4 rounded-2xl bg-violet-950/20 border border-violet-500/30 space-y-2"
+                      className="p-4 rounded-[var(--radius)] bg-[var(--paper-2)] border border-[var(--brass)] space-y-2"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-violet-300">
+                        <span className="font-bold text-xs text-[var(--brass)]">
                           Round {round.roundNumber} Counter
                         </span>
-                        <span className="font-mono text-base font-black text-white">
+                        <span className="font-mono text-base font-black text-[var(--ink)]">
                           {formatCurrency(round.price)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed">{round.rationale}</p>
+                      <p className="text-xs text-[var(--ink-2)] leading-relaxed">{round.rationale}</p>
                     </motion.div>
                   ))
               ) : (
-                <div className="text-center py-16 text-slate-500 text-xs">
+                <div className="text-center py-16 text-[var(--ink-3)] text-xs">
                   Merchant concessions and counter-offers will appear here during live bargaining.
                 </div>
               )}
@@ -305,19 +305,19 @@ function NegotiationContent() {
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="p-6 rounded-3xl bg-gradient-to-r from-emerald-950/60 via-slate-900 to-emerald-950/60 border border-emerald-500/40 shadow-2xl"
+            className="p-6 rounded-3xl bg-[var(--card)] border border-[var(--verdigris)] "
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-[var(--radius)] bg-[var(--verdigris)]/20 text-[var(--verdigris)] border border-[var(--verdigris)] flex items-center justify-center shrink-0">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[var(--ink)] flex items-center gap-2">
                     Mutual Agreement Reached!
                     <Badge variant="success">Finalized</Badge>
                   </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">
+                  <p className="text-xs text-[var(--ink-2)] mt-0.5">
                     Unit price negotiated down to {formatCurrency(displayedNegotiation.agreedPrice)} over{' '}
                     {displayedNegotiation.roundsCount} rounds (Saved {formatCurrency(savings)}). 15-minute price hold activated.
                   </p>
@@ -359,7 +359,7 @@ export default function NegotiationPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400">
+        <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center text-[var(--ink-3)]">
           Loading autonomous negotiation arena...
         </div>
       }

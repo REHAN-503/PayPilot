@@ -80,10 +80,10 @@ function PlanDetailContent() {
   if (!plan) {
     return (
       <DashboardShell>
-        <div className="text-center p-12 rounded-3xl border border-slate-800 bg-slate-900/40">
-          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-white">Purchase Plan Not Found</h2>
-          <p className="text-xs text-slate-400 mt-1">Plan ID: {planId}</p>
+        <div className="text-center p-12 rounded-3xl border border-[var(--rule)] bg-[var(--card)]/40">
+          <AlertTriangle className="w-10 h-10 text-[var(--amber)] mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-[var(--ink)]">Purchase Plan Not Found</h2>
+          <p className="text-xs text-[var(--ink-3)] mt-1">Plan ID: {planId}</p>
           <Link href="/plans" className="mt-4 inline-block">
             <Button variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -162,13 +162,13 @@ function PlanDetailContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/plans">
-              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl">
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-[var(--radius)]">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)] tracking-tight">
                   Plan Details
                 </h1>
                 <Badge variant="outline" className="font-mono text-xs">
@@ -186,7 +186,7 @@ function PlanDetailContent() {
                   {plan.status.replace(/_/g, ' ')}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[var(--ink-3)] mt-0.5">
                 Created {formatDate(plan.createdAt)} • Intent #{plan.intentId.slice(-8)}
               </p>
             </div>
@@ -226,9 +226,9 @@ function PlanDetailContent() {
 
         {/* Expiry Banner if present */}
         {expiresAt && (
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between">
+          <div className="p-3.5 rounded-[var(--radius)] bg-[var(--amber)]/10 border border-[var(--amber)] text-xs text-[var(--amber)] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+              <Clock className="w-4 h-4 text-[var(--amber)] shrink-0" />
               <span>
                 {isExpired
                   ? 'Agreement window expired. Re-evaluation required before payment.'
@@ -246,9 +246,9 @@ function PlanDetailContent() {
           {/* Left Column (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
             {evaluatedPolicy && (
-              <Card className="border-slate-800 bg-slate-900/80 p-5">
+              <Card className="border-[var(--rule)] bg-[var(--card)] p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-white">Policy re-check</h3>
+                  <h3 className="text-sm font-bold text-[var(--ink)]">Policy re-check</h3>
                   <Badge variant={evaluatedPolicy.decision === 'BLOCK' ? 'destructive' : 'success'}>
                     {evaluatedPolicy.decision}
                   </Badge>
@@ -258,10 +258,10 @@ function PlanDetailContent() {
                     ...evaluatedPolicy.violations.map((violation) => ({ pass: false, text: violation }))].map(
                     (rule, index) => (
                       <div key={`${rule.text}-${index}`} className="flex items-start gap-2">
-                        <span className={rule.pass ? 'text-emerald-400' : 'text-red-400'}>
+                        <span className={rule.pass ? 'text-[var(--verdigris)]' : 'text-[var(--vermilion)]'}>
                           {rule.pass ? 'PASS' : 'FAIL'}
                         </span>
-                        <span className="text-slate-300">{rule.text}</span>
+                        <span className="text-[var(--ink-2)]">{rule.text}</span>
                       </div>
                     ),
                   )}
@@ -270,10 +270,10 @@ function PlanDetailContent() {
             )}
 
             {/* Primary Recommended Product Card */}
-            <Card className="border-slate-800 bg-slate-900/80 overflow-hidden shadow-xl">
+            <Card className="border-[var(--rule)] bg-[var(--card)] overflow-hidden ">
               <div className="p-6 flex flex-col sm:flex-row gap-6">
                 {/* Product Image / Placeholder */}
-                <div className="w-full sm:w-44 h-44 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden relative">
+                <div className="w-full sm:w-44 h-44 rounded-[var(--radius)] bg-[var(--paper)] border border-[var(--rule)] flex items-center justify-center shrink-0 overflow-hidden relative">
                   {product?.imageUrl ? (
                     <Image
                       src={product.imageUrl}
@@ -283,9 +283,9 @@ function PlanDetailContent() {
                       className="object-cover w-full h-full"
                     />
                   ) : (
-                    <Package className="w-12 h-12 text-slate-600" />
+                    <Package className="w-12 h-12 text-[var(--ink-3)]" />
                   )}
-                  <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-mono bg-slate-900/90 text-slate-300 border border-slate-700">
+                  <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-mono bg-[var(--card)] text-[var(--ink-2)] border border-[var(--rule)]">
                     {product?.sku || 'SKU-001'}
                   </span>
                 </div>
@@ -293,33 +293,33 @@ function PlanDetailContent() {
                 {/* Product Info */}
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2 text-xs text-blue-400 font-medium mb-1">
+                    <div className="flex items-center gap-2 text-xs text-[var(--ledger)] font-medium mb-1">
                       <span>{product?.category || 'Electronics Catalog'}</span>
                       <span>•</span>
-                      <span className="text-slate-400">Verified Stock: {product?.stock ?? 18}</span>
+                      <span className="text-[var(--ink-3)]">Verified Stock: {product?.stock ?? 18}</span>
                     </div>
 
-                    <h2 className="text-xl font-bold text-white leading-snug">
+                    <h2 className="text-xl font-bold text-[var(--ink)] leading-snug">
                       {primaryItem?.productName || 'Developer Workstation Display'}
                     </h2>
 
-                    <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    <p className="text-xs text-[var(--ink-3)] mt-2 leading-relaxed">
                       {product?.description ||
                         'High-resolution developer panel engineered for software development, terminal clarity, and color fidelity.'}
                     </p>
                   </div>
 
-                  <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between">
+                  <div className="pt-4 mt-4 border-t border-[var(--rule)] flex items-center justify-between">
                     <div>
-                      <div className="text-[11px] text-slate-400">Unit Price</div>
-                      <div className="text-2xl font-black text-white">
+                      <div className="text-[11px] text-[var(--ink-3)]">Unit Price</div>
+                      <div className="text-2xl font-black text-[var(--ink)]">
                         {formatCurrency(primaryItem?.unitPrice || total)}
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-[11px] text-slate-400">Order Total ({primaryItem?.quantity || 1}x)</div>
-                      <div className="text-xl font-bold text-blue-400">
+                      <div className="text-[11px] text-[var(--ink-3)]">Order Total ({primaryItem?.quantity || 1}x)</div>
+                      <div className="text-xl font-bold text-[var(--ledger)]">
                         {formatCurrency(total)}
                       </div>
                     </div>
@@ -329,8 +329,8 @@ function PlanDetailContent() {
             </Card>
 
             {Array.isArray(plan.alternatives) && plan.alternatives.length > 0 && (
-              <Card className="border-slate-800 bg-slate-900/60 p-5">
-                <h3 className="text-sm font-bold text-white mb-3">Alternatives</h3>
+              <Card className="border-[var(--rule)] bg-[var(--card)] p-5">
+                <h3 className="text-sm font-bold text-[var(--ink)] mb-3">Alternatives</h3>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {plan.alternatives.map((alternative, index) => {
                     if (typeof alternative !== 'object' || alternative === null) return null;
@@ -344,14 +344,14 @@ function PlanDetailContent() {
                     return (
                       <div
                         key={candidate.productId}
-                        className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                        className="rounded-[var(--radius)] border border-[var(--rule)] bg-[var(--paper)]/60 p-3"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-xs font-semibold text-slate-200">
+                            <p className="text-xs font-semibold text-[var(--ink)]">
                               {candidate.name || `Alternative ${index + 1}`}
                             </p>
-                            <p className="text-sm font-bold text-blue-400">
+                            <p className="text-sm font-bold text-[var(--ledger)]">
                               {formatCurrency(candidate.price ?? 0)}
                             </p>
                           </div>
@@ -365,7 +365,7 @@ function PlanDetailContent() {
                           </Button>
                         </div>
                         {candidate.reason && (
-                          <p className="mt-2 text-[11px] text-slate-400">{candidate.reason}</p>
+                          <p className="mt-2 text-[11px] text-[var(--ink-3)]">{candidate.reason}</p>
                         )}
                       </div>
                     );
@@ -376,29 +376,29 @@ function PlanDetailContent() {
 
             {/* Why This Pick & Tradeoffs */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="border-slate-800 bg-slate-900/60 p-5">
-                <h4 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+              <Card className="border-[var(--rule)] bg-[var(--card)] p-5">
+                <h4 className="text-xs font-semibold text-[var(--ledger)] uppercase tracking-wider flex items-center gap-1.5 mb-2">
                   <Sparkles className="w-3.5 h-3.5" />
                   Why This Recommendation
                 </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-[var(--ink-2)] leading-relaxed">
                   {plan.explanation ||
                     'Optimized across verified SQL inventory to satisfy requirements while keeping spend strictly below the authorized transaction ceiling.'}
                 </p>
               </Card>
 
-              <Card className="border-slate-800 bg-slate-900/60 p-5">
-                <h4 className="text-xs font-semibold text-purple-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+              <Card className="border-[var(--rule)] bg-[var(--card)] p-5">
+                <h4 className="text-xs font-semibold text-[var(--brass)] uppercase tracking-wider flex items-center gap-1.5 mb-2">
                   <Layers className="w-3.5 h-3.5" />
                   Tradeoffs & Alternatives Considered
                 </h4>
-                <ul className="text-xs text-slate-300 space-y-1.5">
+                <ul className="text-xs text-[var(--ink-2)] space-y-1.5">
                   {(plan.tradeoffs && plan.tradeoffs.length > 0
                     ? plan.tradeoffs
                     : ['Selected model prioritizes budget ceiling adherence over luxury oversized casing.']
                   ).map((t, idx) => (
                     <li key={idx} className="flex items-start gap-1.5">
-                      <span className="text-purple-400 mt-0.5">•</span>
+                      <span className="text-[var(--brass)] mt-0.5">•</span>
                       <span>{t}</span>
                     </li>
                   ))}
@@ -407,14 +407,14 @@ function PlanDetailContent() {
             </div>
 
             {/* What-If Control Simulation */}
-            <Card className="border-slate-800 bg-slate-900/60 p-6">
+            <Card className="border-[var(--rule)] bg-[var(--card)] p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-blue-400" />
+                  <h3 className="text-sm font-bold text-[var(--ink)] flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-[var(--ledger)]" />
                     What-If Governance Simulator
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-[var(--ink-3)] mt-0.5">
                     Simulate how budget adjustments or quantity scaling affect policy compliance.
                   </p>
                 </div>
@@ -432,8 +432,8 @@ function PlanDetailContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Target Budget Ceiling:</span>
-                    <span className="font-bold text-blue-400">{formatCurrency(whatIfBudget)}</span>
+                    <span className="text-[var(--ink-3)]">Target Budget Ceiling:</span>
+                    <span className="font-bold text-[var(--ledger)]">{formatCurrency(whatIfBudget)}</span>
                   </div>
                   <Slider
                     value={[whatIfBudget]}
@@ -446,8 +446,8 @@ function PlanDetailContent() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">Order Quantity:</span>
-                    <span className="font-bold text-slate-200">{whatIfQuantity} unit(s)</span>
+                    <span className="text-[var(--ink-3)]">Order Quantity:</span>
+                    <span className="font-bold text-[var(--ink)]">{whatIfQuantity} unit(s)</span>
                   </div>
                   <Slider
                     value={[whatIfQuantity]}
@@ -464,35 +464,35 @@ function PlanDetailContent() {
           {/* Right Column (4 cols) */}
           <div className="lg:col-span-4 space-y-6">
             {/* Price Breakdown Card */}
-            <Card className="border-slate-800 bg-slate-900/80 p-5 shadow-lg">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4 pb-2 border-b border-slate-800">
+            <Card className="border-[var(--rule)] bg-[var(--card)] p-5 ">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-3)] mb-4 pb-2 border-b border-[var(--rule)]">
                 Financial Breakdown
               </h4>
 
               <div className="space-y-2.5 text-xs">
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-[var(--ink-3)]">
                   <span>Subtotal</span>
-                  <span className="text-slate-200 font-mono">{formatCurrency(plan.subtotal)}</span>
+                  <span className="text-[var(--ink)] font-mono">{formatCurrency(plan.subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-[var(--ink-3)]">
                   <span>Sales Tax (0%)</span>
-                  <span className="text-slate-200 font-mono">{formatCurrency(plan.tax)}</span>
+                  <span className="text-[var(--ink)] font-mono">{formatCurrency(plan.tax)}</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-[var(--ink-3)]">
                   <span>Expedited Shipping</span>
-                  <span className="text-slate-200 font-mono">{formatCurrency(plan.shipping)}</span>
+                  <span className="text-[var(--ink)] font-mono">{formatCurrency(plan.shipping)}</span>
                 </div>
 
                 {Number(plan.discount) > 0 && (
-                  <div className="flex justify-between text-emerald-400">
+                  <div className="flex justify-between text-[var(--verdigris)]">
                     <span>Negotiated Discount</span>
                     <span className="font-mono">−{formatCurrency(plan.discount)}</span>
                   </div>
                 )}
 
-                <div className="pt-3 border-t border-slate-800 flex justify-between items-center text-sm font-bold">
-                  <span className="text-slate-200">Total Due</span>
-                  <span className="text-xl text-blue-400 font-mono">{formatCurrency(total)}</span>
+                <div className="pt-3 border-t border-[var(--rule)] flex justify-between items-center text-sm font-bold">
+                  <span className="text-[var(--ink)]">Total Due</span>
+                  <span className="text-xl text-[var(--ledger)] font-mono">{formatCurrency(total)}</span>
                 </div>
               </div>
 
@@ -509,9 +509,9 @@ function PlanDetailContent() {
             </Card>
 
             {/* Risk Gate Assessment */}
-            <Card className="border-slate-800 bg-slate-900/80 p-5">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <Card className="border-[var(--rule)] bg-[var(--card)] p-5">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--rule)]">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-3)]">
                   Risk Gate Status
                 </h4>
                 <Badge
@@ -527,17 +527,17 @@ function PlanDetailContent() {
                 </Badge>
               </div>
 
-              <div className="space-y-2 text-xs text-slate-400">
+              <div className="space-y-2 text-xs text-[var(--ink-3)]">
                 <div className="flex items-center justify-between">
                   <span>Policy Evaluation:</span>
-                  <span className="font-semibold text-emerald-400">PASSED</span>
+                  <span className="font-semibold text-[var(--verdigris)]">PASSED</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Behavioral Score:</span>
-                  <span className="font-mono text-slate-200">{risk?.score ?? 15} / 100</span>
+                  <span className="font-mono text-[var(--ink)]">{risk?.score ?? 15} / 100</span>
                 </div>
-                <div className="pt-2 border-t border-slate-800/80">
-                  <span className="text-[11px] text-slate-500">
+                <div className="pt-2 border-t border-[var(--rule)]">
+                  <span className="text-[11px] text-[var(--ink-3)]">
                     {risk?.explanation || 'All behavioral and spending velocity rules satisfied.'}
                   </span>
                 </div>
@@ -545,12 +545,12 @@ function PlanDetailContent() {
             </Card>
 
             {/* Negotiation CTA */}
-            <Card className="border-slate-800 bg-gradient-to-br from-slate-900 to-indigo-950/30 p-5">
-              <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-violet-400">
+            <Card className="border-[var(--rule)] bg-[var(--card)] p-5">
+              <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-[var(--brass)]">
                 <Handshake className="w-4 h-4" />
                 <span>Autonomous Merchant Negotiation</span>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              <p className="text-xs text-[var(--ink-2)] leading-relaxed mb-4">
                 Let your Buyer Agent autonomously counter-offer the merchant bot to secure commercial discounts before paying.
               </p>
               <Link href={`/negotiation?planId=${plan.id}`}>
@@ -579,7 +579,7 @@ export default function PlanDetailPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400">
+        <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center text-[var(--ink-3)]">
           Loading purchase plan details...
         </div>
       }

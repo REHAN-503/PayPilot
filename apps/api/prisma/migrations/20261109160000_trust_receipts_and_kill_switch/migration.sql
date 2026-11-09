@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 ALTER TABLE "user_policy"
   ADD COLUMN "agentPaused" BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN "maxDiscountSeekPercent" DECIMAL(5,2);
@@ -76,4 +78,3 @@ BEGIN
   END LOOP;
 END;
 $$;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;

@@ -13,7 +13,6 @@ import {
   BarChart3,
   LogOut,
   Sparkles,
-  Bot,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { authClient } from '../../lib/auth-client';
@@ -48,34 +47,32 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
   return (
     <aside
       className={cn(
-        'flex flex-col h-full w-64 bg-[#0a0f1d] border-r border-slate-800/80 select-none z-40',
+        'flex flex-col h-full w-64 bg-[var(--paper-2)] border-r border-[var(--rule)] select-none z-40',
         className,
       )}
     >
-      {/* Brand Header */}
-      <div className="flex items-center gap-3 px-6 h-16 border-b border-slate-800/80">
-        <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md shadow-blue-500/25">
-          <Bot className="w-5 h-5 text-white" />
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500" />
-          </span>
+      <div className="flex items-center gap-3 px-6 h-16 border-b border-[var(--rule)]">
+        <div className="relative flex items-center justify-center w-10 h-10 border border-[var(--ledger)] text-[var(--ledger)]">
+          <svg viewBox="0 0 32 32" className="w-6 h-6" aria-hidden="true">
+            <path d="M5 18 18 5l9 9-13 13-3-7-6-2Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path d="m8 16 8 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
         </div>
         <div>
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-lg tracking-tight text-white">PayPilot</span>
-            <span className="text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-              Agent
+            <span className="font-bold text-lg tracking-tight text-[var(--ink)]">PayPilot</span>
+            <span className="text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 border border-[var(--rule)] text-[var(--ink-3)]">
+              Flight desk
             </span>
           </div>
-          <p className="text-[11px] text-slate-400">Autonomous PayPal Copilot</p>
+          <p className="text-[11px] text-[var(--ink-3)]">Permissioned purchase log</p>
         </div>
       </div>
 
       {/* Nav List */}
       <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Core Workflows
+        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-3)]">
+        Desk
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -88,17 +85,17 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
               href={item.href}
               onClick={onClose}
               className={cn(
-                'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group',
+                'focus-ring relative flex items-center justify-between px-3.5 py-2.5 rounded-[var(--radius)] text-sm font-medium transition-all duration-200 group',
                 isActive
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 font-semibold'
-                  : 'text-slate-300 hover:bg-slate-800/60 hover:text-white',
+                  ? 'bg-[var(--ledger)] text-[var(--ledger-ink)] font-semibold shadow-[2px_3px_0_color-mix(in_srgb,var(--ink)_12%,transparent)]'
+                  : 'text-[var(--ink-2)] hover:translate-x-1 hover:bg-[var(--paper)] hover:text-[var(--ink)]',
               )}
             >
               <div className="flex items-center gap-3">
                 <Icon
                   className={cn(
                     'w-4 h-4 transition-colors',
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-white',
+                    isActive ? 'text-[var(--ledger-ink)]' : 'text-[var(--ink-3)] group-hover:text-[var(--ink)]',
                   )}
                 />
                 <span>{item.label}</span>
@@ -108,8 +105,8 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
                   className={cn(
                     'text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide',
                     isActive
-                      ? 'bg-blue-700/60 text-white'
-                      : 'bg-violet-500/20 text-violet-400 border border-violet-500/30',
+                      ? 'bg-[var(--ledger)] text-[var(--ledger-ink)]'
+                      : 'text-[var(--brass)] border border-[var(--rule)]',
                   )}
                 >
                   {item.badge}
@@ -121,28 +118,28 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
       </div>
 
       {/* Agent Governance Badge */}
-      <div className="p-4 mx-3 mb-3 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-900/50 border border-slate-800">
-        <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-slate-200">
-          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-          <span>Deterministic Guard</span>
+      <div className="p-4 mx-3 mb-3 bg-[var(--paper)] border border-[var(--rule)]">
+        <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[var(--ink)]">
+          <Sparkles className="w-3.5 h-3.5 text-[var(--brass)]" />
+          <span>Rules on the record</span>
         </div>
-        <p className="text-[11px] text-slate-400 leading-relaxed">
-          Zero LLM hallucination in payment ledger. Code enforces hard budget limits.
+        <p className="text-[11px] text-[var(--ink-3)] leading-relaxed">
+          The ledger records what happened. Spending limits are enforced before checkout.
         </p>
       </div>
 
       {/* User Footer */}
-      <div className="p-3 border-t border-slate-800/80">
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+      <div className="p-3 border-t border-[var(--rule)]">
+        <div className="flex items-center justify-between px-3 py-2 bg-[var(--paper)] border border-[var(--rule)]">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 font-semibold text-xs border border-blue-500/30 shrink-0">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--ledger)] text-[var(--ledger-ink)] font-semibold text-xs shrink-0">
               {session?.user?.name?.[0] || 'U'}
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-slate-200 truncate">
+              <div className="text-xs font-semibold text-[var(--ink)] truncate">
                 {session?.user?.name || 'Authenticated User'}
               </div>
-              <div className="text-[10px] text-slate-400 truncate">
+              <div className="text-[10px] text-[var(--ink-3)] truncate">
                 {session?.user?.email || 'demo@paypilot.dev'}
               </div>
             </div>
@@ -150,7 +147,7 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
           <button
             onClick={handleSignOut}
             title="Sign Out"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors cursor-pointer"
+            className="focus-ring pressable p-1.5 rounded-lg text-[var(--ink-3)] hover:text-[var(--vermilion)] hover:bg-[var(--paper-2)] transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -159,4 +156,3 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
     </aside>
   );
 }
-

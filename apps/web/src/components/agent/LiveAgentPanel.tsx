@@ -36,30 +36,30 @@ export function LiveAgentPanel({ steps, currentStepId, className }: LiveAgentPan
   return (
     <div
       className={cn(
-        'p-5 rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur-md shadow-xl',
+        'paper-lift p-5 rounded-[var(--radius)] border border-[var(--rule)] bg-[var(--card)]',
         className,
       )}
     >
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-[var(--rule)]">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30">
-            <Bot className="w-4 h-4 animate-pulse" />
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ledger)]/20 text-[var(--ledger)] border border-[var(--ledger)]">
+            <Bot className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-[var(--ink)] flex items-center gap-2">
               Autonomous Agent Execution
               <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                <span className="hidden" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--ledger)]" />
               </span>
             </h3>
-            <p className="text-[11px] text-slate-400">Strict deterministic safety boundary active</p>
+            <p className="text-[11px] text-[var(--ink-3)]">Strict deterministic safety boundary active</p>
           </div>
         </div>
       </div>
 
       {/* Step Stepper List */}
-      <div className="space-y-3 relative pl-6 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+      <div className="space-y-3 relative pl-6 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--paper-2)]">
         {steps.map((step, idx) => {
           const Icon = step.icon;
           const isActive = step.id === currentStepId;
@@ -75,14 +75,14 @@ export function LiveAgentPanel({ steps, currentStepId, className }: LiveAgentPan
               {/* Status Circle */}
               <div
                 className={cn(
-                  'absolute -left-6 top-1 flex items-center justify-center w-6 h-6 rounded-full border text-xs shadow-md transition-all',
+                  'absolute -left-6 top-1 flex items-center justify-center w-6 h-6 rounded-full border text-xs  transition-all',
                   step.status === 'completed'
-                    ? 'bg-emerald-950/90 border-emerald-500/70 text-emerald-400'
+                    ? 'bg-[var(--paper-2)] border-[var(--verdigris)] text-[var(--verdigris)]'
                     : step.status === 'running'
-                    ? 'bg-blue-950/90 border-blue-500 text-blue-400 shadow-blue-500/30 animate-pulse'
+                    ? 'bg-[var(--paper-2)] border-[var(--ledger)] text-[var(--ledger)]'
                     : step.status === 'blocked'
-                    ? 'bg-red-950/90 border-red-500 text-red-400'
-                    : 'bg-slate-900 border-slate-800 text-slate-600',
+                    ? 'bg-[var(--paper-2)] border-[var(--vermilion)] text-[var(--vermilion)]'
+                    : 'bg-[var(--card)] border-[var(--rule)] text-[var(--ink-3)]',
                 )}
               >
                 {step.status === 'completed' ? (
@@ -99,14 +99,14 @@ export function LiveAgentPanel({ steps, currentStepId, className }: LiveAgentPan
               {/* Step Details */}
               <div
                 className={cn(
-                  'p-3 rounded-xl border transition-all',
+                  'p-3 rounded-[var(--radius)] border transition-all',
                   isActive
-                    ? 'bg-blue-950/30 border-blue-500/40 shadow-lg shadow-blue-500/10'
+                    ? 'bg-[var(--paper-2)] border-[var(--rule)]  '
                     : step.status === 'completed'
-                    ? 'bg-slate-900/60 border-slate-800/80 text-slate-300'
+                    ? 'bg-[var(--card)] border-[var(--rule)] text-[var(--ink-2)]'
                     : step.status === 'blocked'
-                    ? 'bg-red-950/20 border-red-900/40 text-red-200'
-                    : 'bg-slate-950/40 border-slate-800/40 text-slate-500 opacity-60',
+                    ? 'bg-[var(--paper-2)] border-[var(--vermilion)] text-[var(--vermilion)]'
+                    : 'bg-[var(--paper)]/40 border-[var(--rule)]/40 text-[var(--ink-3)] opacity-60',
                 )}
               >
                 <div className="flex items-center justify-between">
@@ -115,37 +115,37 @@ export function LiveAgentPanel({ steps, currentStepId, className }: LiveAgentPan
                       className={cn(
                         'w-3.5 h-3.5',
                         step.status === 'completed'
-                          ? 'text-emerald-400'
+                          ? 'text-[var(--verdigris)]'
                           : step.status === 'running'
-                          ? 'text-blue-400'
+                          ? 'text-[var(--ledger)]'
                           : step.status === 'blocked'
-                          ? 'text-red-400'
-                          : 'text-slate-500',
+                          ? 'text-[var(--vermilion)]'
+                          : 'text-[var(--ink-3)]',
                       )}
                     />
-                    <span className="text-xs font-semibold text-slate-200">{step.label}</span>
+                    <span className="text-xs font-semibold text-[var(--ink)]">{step.label}</span>
                   </div>
 
                   <span
                     className={cn(
                       'text-[10px] font-mono uppercase px-2 py-0.5 rounded-full font-medium',
                       step.status === 'completed'
-                        ? 'bg-emerald-500/10 text-emerald-400'
+                        ? 'bg-[var(--verdigris)]/10 text-[var(--verdigris)]'
                         : step.status === 'running'
-                        ? 'bg-blue-500/15 text-blue-400 animate-pulse'
+                        ? 'bg-[var(--ledger)]/15 text-[var(--ledger)]'
                         : step.status === 'blocked'
-                        ? 'bg-red-500/10 text-red-400'
-                        : 'bg-slate-800/60 text-slate-500',
+                        ? 'bg-[var(--vermilion)]/10 text-[var(--vermilion)]'
+                        : 'bg-[var(--paper-2)] text-[var(--ink-3)]',
                     )}
                   >
                     {step.status}
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-400 mt-1">{step.description}</p>
+                <p className="text-[11px] text-[var(--ink-3)] mt-1">{step.description}</p>
 
                 {step.detail && (
-                  <div className="mt-2 text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
+                  <div className="mt-2 text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-[var(--paper)] border border-[var(--rule)] text-[var(--ink-2)]">
                     {step.detail}
                   </div>
                 )}
@@ -202,4 +202,3 @@ export const INITIAL_AGENT_STEPS: AgentStep[] = [
     status: 'idle',
   },
 ];
-

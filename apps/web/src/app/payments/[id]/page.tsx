@@ -98,10 +98,10 @@ function PaymentDetailContent() {
   if (!payment) {
     return (
       <DashboardShell>
-        <div className="text-center p-12 rounded-3xl border border-slate-800 bg-slate-900/40">
-          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-white">Payment Record Not Found</h2>
-          <p className="text-xs text-slate-400 mt-1">Payment ID: {paymentId}</p>
+        <div className="text-center p-12 rounded-3xl border border-[var(--rule)] bg-[var(--card)]/40">
+          <AlertTriangle className="w-10 h-10 text-[var(--amber)] mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-[var(--ink)]">Payment Record Not Found</h2>
+          <p className="text-xs text-[var(--ink-3)] mt-1">Payment ID: {paymentId}</p>
           <Link href="/transactions" className="mt-4 inline-block">
             <Button variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -124,35 +124,35 @@ function PaymentDetailContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/transactions">
-              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl">
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-[var(--radius)]">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)] tracking-tight">
                   PayPal Transaction Detail
                 </h1>
                 <Badge variant={isCaptured ? 'success' : 'warning'}>
                   {payment.status}
                 </Badge>
                 {isConfirmed && (
-                  <Badge variant="default" className="bg-blue-600/20 text-blue-400 border-blue-500/30">
+                  <Badge variant="default" className="bg-[var(--ledger)]/20 text-[var(--ledger)] border-[var(--ledger)]">
                     Webhook Confirmed
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-[var(--ink-3)] mt-0.5">
                 Internal Payment ID: {payment.id} • Created {formatDate(payment.createdAt)}
               </p>
             </div>
           </div>
 
           <div className="text-right">
-            <div className="text-2xl sm:text-3xl font-black text-white font-mono">
+            <div className="text-2xl sm:text-3xl font-black text-[var(--ink)] font-mono">
               {formatCurrency(amount)}
             </div>
-            <div className="text-xs text-emerald-400 font-medium">USD • Intent CAPTURE</div>
+            <div className="text-xs text-[var(--verdigris)] font-medium">USD • Intent CAPTURE</div>
           </div>
         </div>
 
@@ -163,7 +163,7 @@ function PaymentDetailContent() {
               size="sm"
               onClick={handleCancel}
               disabled={isCancelling}
-              className="text-red-300 border-red-500/30 hover:bg-red-950/30"
+              className="text-[var(--vermilion)] border-[var(--vermilion)] hover:bg-[var(--paper-2)]"
             >
               {isCancelling ? 'Cancelling...' : 'Cancel payment'}
             </Button>
@@ -180,19 +180,19 @@ function PaymentDetailContent() {
           {/* Left Details (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
             {/* PayPal Gateway Identifiers */}
-            <Card className="border-slate-800 bg-slate-900/80 p-6 shadow-xl">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4 pb-2 border-b border-slate-800 flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-blue-400" />
+            <Card className="border-[var(--rule)] bg-[var(--card)] p-6 ">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-3)] mb-4 pb-2 border-b border-[var(--rule)] flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-[var(--ledger)]" />
                 PayPal Orders v2 Identification
               </h3>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-[var(--radius)] bg-[var(--paper)]/70 border border-[var(--rule)] text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">
+                    <span className="text-[var(--ink-3)] block text-[10px] uppercase font-semibold">
                       PayPal Order ID
                     </span>
-                    <span className="font-mono text-slate-200 font-semibold">
+                    <span className="font-mono text-[var(--ink)] font-semibold">
                       {payment.paypalOrderId || 'PENDING_CREATION'}
                     </span>
                   </div>
@@ -201,10 +201,10 @@ function PaymentDetailContent() {
                       variant="ghost"
                       size="sm"
                       onClick={() => copyToClipboard(payment.paypalOrderId!, 'order')}
-                      className="h-8 text-xs text-blue-400 hover:text-white"
+                      className="h-8 text-xs text-[var(--ledger)] hover:text-[var(--ink)]"
                     >
                       {copiedKey === 'order' ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <Check className="w-3.5 h-3.5 text-[var(--verdigris)]" />
                       ) : (
                         <Copy className="w-3.5 h-3.5" />
                       )}
@@ -212,12 +212,12 @@ function PaymentDetailContent() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-[var(--radius)] bg-[var(--paper)]/70 border border-[var(--rule)] text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">
+                    <span className="text-[var(--ink-3)] block text-[10px] uppercase font-semibold">
                       PayPal Capture ID
                     </span>
-                    <span className="font-mono text-slate-200 font-semibold">
+                    <span className="font-mono text-[var(--ink)] font-semibold">
                       {payment.paypalCaptureId || 'PENDING_CAPTURE'}
                     </span>
                   </div>
@@ -226,10 +226,10 @@ function PaymentDetailContent() {
                       variant="ghost"
                       size="sm"
                       onClick={() => copyToClipboard(payment.paypalCaptureId!, 'capture')}
-                      className="h-8 text-xs text-blue-400 hover:text-white"
+                      className="h-8 text-xs text-[var(--ledger)] hover:text-[var(--ink)]"
                     >
                       {copiedKey === 'capture' ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <Check className="w-3.5 h-3.5 text-[var(--verdigris)]" />
                       ) : (
                         <Copy className="w-3.5 h-3.5" />
                       )}
@@ -237,12 +237,12 @@ function PaymentDetailContent() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-[var(--radius)] bg-[var(--paper)]/70 border border-[var(--rule)] text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">
+                    <span className="text-[var(--ink-3)] block text-[10px] uppercase font-semibold">
                       Ledger Idempotency Key
                     </span>
-                    <span className="font-mono text-slate-300 text-[11px] truncate max-w-sm block">
+                    <span className="font-mono text-[var(--ink-2)] text-[11px] truncate max-w-sm block">
                       {payment.idempotencyKey}
                     </span>
                   </div>
@@ -250,10 +250,10 @@ function PaymentDetailContent() {
                     variant="ghost"
                     size="sm"
                     onClick={() => copyToClipboard(payment.idempotencyKey, 'idem')}
-                    className="h-8 text-xs text-blue-400 hover:text-white"
+                    className="h-8 text-xs text-[var(--ledger)] hover:text-[var(--ink)]"
                   >
                     {copiedKey === 'idem' ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <Check className="w-3.5 h-3.5 text-[var(--verdigris)]" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
@@ -263,12 +263,12 @@ function PaymentDetailContent() {
             </Card>
 
             {/* Recommended Next Action */}
-            <Card className="border-slate-800 bg-slate-900/60 p-5">
-              <h4 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+            <Card className="border-[var(--rule)] bg-[var(--card)] p-5">
+              <h4 className="text-xs font-semibold text-[var(--ledger)] uppercase tracking-wider flex items-center gap-1.5 mb-2">
                 <Sparkles className="w-3.5 h-3.5" />
                 Recommended Next Action
               </h4>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <p className="text-xs text-[var(--ink-2)] leading-relaxed">
                 {isConfirmed
                   ? 'Payment has been authoritatively verified via PayPal webhook and stamped to the immutable ledger. No action required.'
                   : isCaptured
@@ -281,10 +281,10 @@ function PaymentDetailContent() {
           {/* Right Column: Webhook Status & Simulator (4 cols) */}
           <div className="lg:col-span-4 space-y-6">
             {/* Cryptographic Webhook Confirmation */}
-            <Card className="border-slate-800 bg-slate-900/80 p-5 shadow-lg">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Webhook className="w-3.5 h-3.5 text-emerald-400" />
+            <Card className="border-[var(--rule)] bg-[var(--card)] p-5 ">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--rule)]">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--ink-3)] flex items-center gap-1.5">
+                  <Webhook className="w-3.5 h-3.5 text-[var(--verdigris)]" />
                   Webhook Status
                 </h4>
                 <Badge variant={isConfirmed ? 'success' : 'warning'}>
@@ -292,28 +292,28 @@ function PaymentDetailContent() {
                 </Badge>
               </div>
 
-              <div className="space-y-2 text-xs text-slate-300">
+              <div className="space-y-2 text-xs text-[var(--ink-2)]">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Captured At:</span>
-                  <span className="font-mono text-slate-200">{formatDate(payment.capturedAt)}</span>
+                  <span className="text-[var(--ink-3)]">Captured At:</span>
+                  <span className="font-mono text-[var(--ink)]">{formatDate(payment.capturedAt)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Webhook Confirmed:</span>
-                  <span className="font-mono text-slate-200">{formatDate(payment.webhookConfirmedAt)}</span>
+                  <span className="text-[var(--ink-3)]">Webhook Confirmed:</span>
+                  <span className="font-mono text-[var(--ink)]">{formatDate(payment.webhookConfirmedAt)}</span>
                 </div>
               </div>
             </Card>
 
             {/* Dev Sandbox Simulator Panel */}
-            <Card className="border-amber-500/30 bg-gradient-to-b from-slate-900 to-amber-950/20 p-5 shadow-xl">
+            <Card className="border-[var(--amber)] bg-[var(--card)] p-5 ">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                  <PlayCircle className="w-4 h-4 text-amber-400" />
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--amber)]">
+                  <PlayCircle className="w-4 h-4 text-[var(--amber)]" />
                   <span>Sandbox Simulator</span>
                 </div>
                 <Badge variant="warning">Dev Tool</Badge>
               </div>
-              <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
+              <p className="text-[11px] text-[var(--ink-3)] mb-4 leading-relaxed">
                 Simulate asynchronous PayPal webhook events to test authoritative confirmation, idempotency, or denial handlers.
               </p>
 
@@ -323,7 +323,7 @@ function PaymentDetailContent() {
                   size="sm"
                   onClick={() => handleSimulate('PAYMENT.CAPTURE.COMPLETED')}
                   disabled={isSimulating}
-                  className="text-xs text-emerald-400 hover:bg-emerald-950/40 hover:border-emerald-500/50"
+                  className="text-xs text-[var(--verdigris)] hover:bg-[var(--paper-2)] hover:border-[var(--verdigris)]"
                 >
                   Confirm (200)
                 </Button>
@@ -333,7 +333,7 @@ function PaymentDetailContent() {
                   size="sm"
                   onClick={() => handleSimulate('PAYMENT.CAPTURE.DENIED')}
                   disabled={isSimulating}
-                  className="text-xs text-red-400 hover:bg-red-950/40 hover:border-red-500/50"
+                  className="text-xs text-[var(--vermilion)] hover:bg-[var(--paper-2)] hover:border-[var(--vermilion)]"
                 >
                   Simulate Denied
                 </Button>
@@ -343,7 +343,7 @@ function PaymentDetailContent() {
                   size="sm"
                   onClick={() => handleSimulate('PAYMENT.CAPTURE.REVERSED')}
                   disabled={isSimulating}
-                  className="text-xs text-amber-400 hover:bg-amber-950/40 hover:border-amber-500/50"
+                  className="text-xs text-[var(--amber)] hover:bg-[var(--paper-2)] hover:border-[var(--amber)]"
                 >
                   Simulate Reversed
                 </Button>
@@ -353,7 +353,7 @@ function PaymentDetailContent() {
                   size="sm"
                   onClick={() => handleSimulate('duplicate')}
                   disabled={isSimulating}
-                  className="text-xs text-blue-400 hover:bg-blue-950/40 hover:border-blue-500/50"
+                  className="text-xs text-[var(--ledger)] hover:bg-[var(--paper-2)] hover:border-[var(--ledger)]/50"
                 >
                   Duplicate Test
                 </Button>
@@ -370,7 +370,7 @@ export default function PaymentDetailPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400">
+        <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center text-[var(--ink-3)]">
           Loading payment ledger...
         </div>
       }

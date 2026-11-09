@@ -53,31 +53,31 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
   };
 
   const getStageIcon = (stage: string, status: string) => {
-    if (status === 'blocked') return <ShieldBan className="w-4 h-4 text-red-400" />;
+    if (status === 'blocked') return <ShieldBan className="w-4 h-4 text-[var(--vermilion)]" />;
 
     switch (stage) {
       case 'INTENT':
-        return <Target className="w-4 h-4 text-blue-400" />;
+        return <Target className="w-4 h-4 text-[var(--ledger)]" />;
       case 'PLAN':
-        return <FileCheck2 className="w-4 h-4 text-indigo-400" />;
+        return <FileCheck2 className="w-4 h-4 text-[var(--brass)]" />;
       case 'TOOL':
-        return <Terminal className="w-4 h-4 text-emerald-400" />;
+        return <Terminal className="w-4 h-4 text-[var(--verdigris)]" />;
       case 'POLICY':
-        return <ShieldCheck className="w-4 h-4 text-emerald-400" />;
+        return <ShieldCheck className="w-4 h-4 text-[var(--verdigris)]" />;
       case 'RISK':
-        return <AlertTriangle className="w-4 h-4 text-amber-400" />;
+        return <AlertTriangle className="w-4 h-4 text-[var(--amber)]" />;
       case 'APPROVAL':
-        return <UserCheck className="w-4 h-4 text-blue-400" />;
+        return <UserCheck className="w-4 h-4 text-[var(--ledger)]" />;
       case 'PAYPAL':
-        return <CreditCard className="w-4 h-4 text-blue-400" />;
+        return <CreditCard className="w-4 h-4 text-[var(--ledger)]" />;
       case 'WEBHOOK':
-        return <Webhook className="w-4 h-4 text-emerald-400" />;
+        return <Webhook className="w-4 h-4 text-[var(--verdigris)]" />;
       case 'LEDGER':
-        return <Database className="w-4 h-4 text-purple-400" />;
+        return <Database className="w-4 h-4 text-[var(--brass)]" />;
       case 'NEGOTIATION':
-        return <Handshake className="w-4 h-4 text-violet-400" />;
+        return <Handshake className="w-4 h-4 text-[var(--brass)]" />;
       default:
-        return <Bot className="w-4 h-4 text-slate-400" />;
+        return <Bot className="w-4 h-4 text-[var(--ink-3)]" />;
     }
   };
 
@@ -98,10 +98,10 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
 
   if (!events || events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 rounded-2xl border border-slate-800 bg-slate-900/40 text-center">
-        <Bot className="w-10 h-10 text-slate-500 mb-3" />
-        <h4 className="text-sm font-semibold text-slate-300">No audit events recorded yet</h4>
-        <p className="text-xs text-slate-500 max-w-sm mt-1">
+      <div className="flex flex-col items-center justify-center p-8 rounded-[var(--radius)] border border-[var(--rule)] bg-[var(--card)]/40 text-center">
+        <Bot className="w-10 h-10 text-[var(--ink-3)] mb-3" />
+        <h4 className="text-sm font-semibold text-[var(--ink-2)]">No audit events recorded yet</h4>
+        <p className="text-xs text-[var(--ink-3)] max-w-sm mt-1">
           When autonomous planning, policy checks, or payments run, the complete cryptographic trace will appear here.
         </p>
       </div>
@@ -111,17 +111,17 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
   return (
     <div className={cn('relative space-y-4', className)}>
       {isLive && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400 w-fit mb-4">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] bg-[var(--ledger)]/10 border border-[var(--ledger)]/20 text-xs text-[var(--ledger)] w-fit mb-4">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            <span className="hidden" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--ledger)]" />
           </span>
           <span className="font-medium">Live SSE Audit Stream Active</span>
         </div>
       )}
 
       {/* Stepper Timeline Container */}
-      <div className="relative pl-6 sm:pl-8 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-gradient-to-b before:from-blue-600 before:via-indigo-500/40 before:to-slate-800 space-y-6">
+      <div className="relative pl-6 sm:pl-8 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-[var(--ledger)] space-y-6">
         <AnimatePresence initial={false}>
           {events.map((event, index) => {
             const isExpanded = expandedIds.has(event.id);
@@ -139,14 +139,14 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
                 {/* Node Step Icon */}
                 <div
                   className={cn(
-                    'absolute -left-6 sm:-left-8 top-1 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full border shadow-lg transition-transform group-hover:scale-110',
+                    'absolute -left-6 sm:-left-8 top-1 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full border  transition-transform group-hover:scale-110',
                     isBlocked
-                      ? 'bg-red-950/80 border-red-500/60 shadow-red-900/40'
+                      ? 'bg-[var(--paper-2)] border-[var(--vermilion)] '
                       : event.status === 'warn'
-                      ? 'bg-amber-950/80 border-amber-500/60 shadow-amber-900/40'
+                      ? 'bg-[var(--paper-2)] border-[var(--amber)] shadow-amber-900/40'
                       : event.status === 'pending'
-                      ? 'bg-blue-950/80 border-blue-500/60 shadow-blue-900/40 animate-pulse'
-                      : 'bg-slate-900 border-slate-700/80 shadow-slate-950',
+                      ? 'bg-[var(--paper-2)] border-[var(--ledger)]  animate-pulse'
+                      : 'bg-[var(--card)] border-[var(--rule)] ',
                   )}
                 >
                   {getStageIcon(event.stage, event.status)}
@@ -155,21 +155,21 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
                 {/* Event Card */}
                 <div
                   className={cn(
-                    'p-4 rounded-2xl border transition-all',
+                    'p-4 rounded-[var(--radius)] border transition-all',
                     isBlocked
-                      ? 'bg-red-950/20 border-red-900/40 hover:border-red-500/50'
-                      : 'bg-slate-900/70 border-slate-800/80 hover:border-slate-700/80 shadow-md',
+                      ? 'bg-[var(--paper-2)] border-[var(--vermilion)] hover:border-[var(--vermilion)]'
+                      : 'bg-[var(--card)]/70 border-[var(--rule)] hover:border-[var(--rule)] ',
                   )}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-100">
+                      <span className="font-semibold text-sm text-[var(--ink)]">
                         {event.title}
                       </span>
                       {getStatusBadge(event.status)}
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                      <span className="font-mono px-2 py-0.5 rounded bg-slate-800/80 text-slate-300">
+                    <div className="flex items-center gap-2 text-[11px] text-[var(--ink-3)]">
+                      <span className="font-mono px-2 py-0.5 rounded bg-[var(--paper-2)] text-[var(--ink-2)]">
                         {event.actor}
                       </span>
                       <span>•</span>
@@ -181,7 +181,7 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
                   <p
                     className={cn(
                       'text-xs sm:text-sm leading-relaxed',
-                      isBlocked ? 'text-red-300 font-medium' : 'text-slate-300',
+                      isBlocked ? 'text-[var(--vermilion)] font-medium' : 'text-[var(--ink-2)]',
                     )}
                   >
                     {event.explanation}
@@ -189,11 +189,11 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
 
                   {/* Expandable Evidence JSON Drawer */}
                   {hasData && (
-                    <div className="mt-3 pt-3 border-t border-slate-800/60">
+                    <div className="mt-3 pt-3 border-t border-[var(--rule)]">
                       <div className="flex items-center justify-between">
                         <button
                           onClick={() => toggleExpand(event.id)}
-                          className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors cursor-pointer"
+                          className="flex items-center gap-1.5 text-xs text-[var(--ledger)] hover:text-[var(--ledger)] font-medium transition-colors cursor-pointer"
                         >
                           <span>{isExpanded ? 'Hide audit evidence' : 'Show evidence'}</span>
                           {isExpanded ? (
@@ -208,11 +208,11 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
                             variant="ghost"
                             size="sm"
                             onClick={() => copyEvidence(event.id, event.data)}
-                            className="h-7 px-2 text-xs text-slate-400 hover:text-white"
+                            className="h-7 px-2 text-xs text-[var(--ink-3)] hover:text-[var(--ink)]"
                           >
                             {copiedId === event.id ? (
                               <>
-                                <Check className="w-3 h-3 text-emerald-400 mr-1" />
+                                <Check className="w-3 h-3 text-[var(--verdigris)] mr-1" />
                                 Copied
                               </>
                             ) : (
@@ -230,9 +230,9 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="mt-2.5 overflow-hidden rounded-xl bg-slate-950 p-3 border border-slate-800/90"
+                          className="mt-2.5 overflow-hidden rounded-[var(--radius)] bg-[var(--paper)] p-3 border border-[var(--rule)]/90"
                         >
-                          <pre className="text-[11px] font-mono text-slate-300 overflow-x-auto max-h-56 leading-normal">
+                          <pre className="text-[11px] font-mono text-[var(--ink-2)] overflow-x-auto max-h-56 leading-normal">
                             {JSON.stringify(event.data, null, 2)}
                           </pre>
                         </motion.div>

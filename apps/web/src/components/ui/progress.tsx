@@ -8,11 +8,11 @@ export const Progress = React.forwardRef<
 >(({ className, value, ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}
-    className={cn('relative h-2 w-full overflow-hidden rounded-full bg-slate-800', className)}
+    className={cn('relative h-2 w-full overflow-hidden rounded-full bg-[var(--paper-2)]', className)}
     {...props}
   >
     <ProgressPrimitive.Indicator
-      className="h-full w-full flex-1 bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-300 ease-in-out"
+      className="h-full w-full flex-1 bg-[var(--ledger)] transition-all duration-300 ease-in-out"
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
     />
   </ProgressPrimitive.Root>
@@ -22,7 +22,7 @@ Progress.displayName = ProgressPrimitive.Root.displayName;
 export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('animate-pulse rounded-xl bg-slate-800/80', className)}
+      className={cn('animate-pulse rounded-[var(--radius)] bg-[var(--paper-2)]', className)}
       {...props}
     />
   );
