@@ -381,6 +381,7 @@ export class PaymentsService {
     const captureResult = await this.paypalClient.captureOrder(
       payment.paypalOrderId,
       captureIdempotencyKey,
+      { total: Number(payment.amount), currency: payment.currency },
     );
 
     const capture = captureResult.purchase_units?.[0]?.payments?.captures?.[0];

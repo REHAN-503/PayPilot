@@ -13,7 +13,9 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.includes('.');
 
-  const sessionToken = request.cookies.get('better-auth.session_token')?.value;
+  const sessionToken =
+    request.cookies.get('better-auth.session_token')?.value ||
+    request.cookies.get('__Secure-better-auth.session_token')?.value;
 
   if (!isPublic && !sessionToken) {
     const welcomeUrl = new URL('/welcome', request.url);

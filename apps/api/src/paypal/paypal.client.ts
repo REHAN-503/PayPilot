@@ -80,6 +80,8 @@ export interface VerifyWebhookParams {
   transmissionTime: string;
   webhookId?: string;
   webhookEvent: Record<string, unknown>;
+  rawBody?: string;
+  skipVerification?: boolean;
 }
 
 export interface WebhookVerificationResult {
@@ -96,6 +98,7 @@ export class PayPalClient {
   private readonly demoMode: boolean;
 
   private cachedToken: { token: string; expiresAt: number } | null = null;
+  private readonly mockOrders = new Map<string, { total: string; currency: string }>();
 
   constructor(private readonly config: ConfigService) {
     this.baseUrl =
@@ -104,7 +107,7 @@ export class PayPalClient {
     this.clientId = this.config.get<string>('PAYPAL_CLIENT_ID');
     this.clientSecret = this.config.get<string>('PAYPAL_CLIENT_SECRET');
     this.webhookId = this.config.get<string>('PAYPAL_WEBHOOK_ID');
-    this.demoMode = this.config.get<string>('DEMO_MODE') !== 'false';
+    this.demoMode = this.config.get<string>('DEMO_MODE') === 'true';
   }
 
   hasValidCredentials(): boolean {
@@ -210,6 +213,10 @@ export class PayPalClient {
   async createOrder(params: CreateOrderParams): Promise<PayPalOrderResponse> {
     if (!this.hasValidCredentials() && this.demoMode) {
       const mockId = `MOCK-ORD-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      this.mockOrders.set(mockId, {
+        total: params.total.toFixed(2),
+        currency: params.currency || 'USD',
+      });
       return {
         id: mockId,
         status: 'CREATED',
@@ -284,9 +291,16 @@ export class PayPalClient {
   async captureOrder(
     orderId: string,
     idempotencyKey: string,
+    expectedAmount?: { total: number | string; currency?: string },
   ): Promise<PayPalCaptureResponse> {
     if ((!this.hasValidCredentials() && this.demoMode) || orderId.startsWith('MOCK-')) {
       const mockCapId = `MOCK-CAP-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      const savedMock = this.mockOrders.get(orderId);
+      const value =
+        savedMock?.total ??
+        (expectedAmount ? Number(expectedAmount.total).toFixed(2) : '100.00');
+      const currency = savedMock?.currency ?? (expectedAmount?.currency || 'USD');
+
       return {
         id: orderId,
         status: 'COMPLETED',
@@ -299,7 +313,7 @@ export class PayPalClient {
                 {
                   id: mockCapId,
                   status: 'COMPLETED',
-                  amount: { currency_code: 'USD', value: '189.99' },
+                  amount: { currency_code: currency, value },
                 },
               ],
             },
@@ -383,27 +397,51 @@ export class PayPalClient {
   }
 
   async verifyWebhookSignature(params: VerifyWebhookParams): Promise<boolean> {
-    // In demo mode or mock simulation, bypass if mock signature indicator present
-    if (params.transmissionSig === 'SIMULATED_MOCK_SIGNATURE' || params.transmissionSig === 'MOCK_SIG') {
-      return true;
+    const isDevDemo =
+      this.demoMode &&
+      this.config.get<string>('NODE_ENV') !== 'production';
+
+    // Explicit skipVerification option can ONLY be honored in dev/demo environments
+    if (params.skipVerification) {
+      if (isDevDemo) {
+        this.logger.log(
+          '[PayPalClient] Webhook verification skipped via dev-authorized skipVerification in DEMO_MODE',
+        );
+        return true;
+      }
+      this.logger.warn(
+        '[PayPalClient] Rejected webhook: skipVerification flag is forbidden in production or non-demo mode',
+      );
+      return false;
     }
 
     const webhookId = params.webhookId || this.webhookId;
     if (!webhookId) {
-      if (this.demoMode) {
-        this.logger.warn('[PayPalClient] No PAYPAL_WEBHOOK_ID configured; trusting webhook in DEMO_MODE');
-        return true;
-      }
+      this.logger.warn(
+        '[PayPalClient] No PAYPAL_WEBHOOK_ID configured; rejecting unverified webhook',
+      );
       return false;
     }
 
     if (!this.hasValidCredentials()) {
-      if (this.demoMode) return true;
+      this.logger.warn(
+        '[PayPalClient] Missing valid PayPal credentials for webhook signature verification',
+      );
       return false;
     }
 
     try {
       const token = await this.getAccessToken();
+
+      // Use raw body if available, otherwise serialize webhook event
+      let eventPayload: Record<string, unknown> = params.webhookEvent;
+      if (params.rawBody) {
+        try {
+          eventPayload = JSON.parse(params.rawBody);
+        } catch {
+          eventPayload = params.webhookEvent;
+        }
+      }
 
       const body = {
         auth_algo: params.authAlgo,
@@ -412,7 +450,7 @@ export class PayPalClient {
         transmission_sig: params.transmissionSig,
         transmission_time: params.transmissionTime,
         webhook_id: webhookId,
-        webhook_event: params.webhookEvent,
+        webhook_event: eventPayload,
       };
 
       const res = await this.fetchWithRetry(

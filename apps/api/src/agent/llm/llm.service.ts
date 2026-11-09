@@ -34,8 +34,10 @@ export function hashPrompt(text: string): string {
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  private readonly provider: 'anthropic' | 'openai' | 'gemini';
+  private readonly provider: 'anthropic' | 'gemini' | 'openai';
   private readonly anthropicApiKey?: string;
+  private readonly geminiApiKey?: string;
+  private readonly model: string;
   private readonly demoMode: boolean;
   private readonly anthropicClient?: Anthropic;
   private readonly fixtures: FixtureEntry[] = [
@@ -48,17 +50,32 @@ export class LlmService {
   constructor(private readonly config: ConfigService) {
     this.provider = (this.config.get<string>('LLM_PROVIDER') as any) || 'anthropic';
     this.anthropicApiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-    this.demoMode = this.config.get<string>('DEMO_MODE') !== 'false';
+    this.geminiApiKey = this.config.get<string>('GEMINI_API_KEY');
+    this.demoMode = this.config.get<string>('DEMO_MODE') === 'true';
 
-    if (this.anthropicApiKey && !this.anthropicApiKey.startsWith('placeholder') && !this.anthropicApiKey.startsWith('mock')) {
+    this.model =
+      this.config.get<string>('LLM_MODEL') ||
+      (this.geminiApiKey ? 'gemini-1.5-pro' : 'claude-3-5-sonnet-20241022');
+
+    if (
+      this.anthropicApiKey &&
+      !this.anthropicApiKey.startsWith('placeholder') &&
+      !this.anthropicApiKey.startsWith('mock')
+    ) {
       this.anthropicClient = new Anthropic({
         apiKey: this.anthropicApiKey,
       });
     }
+
+    if (!this.demoMode && !this.anthropicClient && !this.geminiApiKey) {
+      this.logger.error(
+        '[LlmService] CRITICAL CONFIGURATION ERROR: DEMO_MODE is false (or unset), but no LLM API key (ANTHROPIC_API_KEY / GEMINI_API_KEY) is configured. All live LLM requests will fail.',
+      );
+    }
   }
 
   isDemoMode(): boolean {
-    return this.demoMode || !this.anthropicClient;
+    return this.demoMode || (!this.anthropicClient && !this.geminiApiKey);
   }
 
   getFixtureForPrompt(userText: string): FixtureEntry | null {
@@ -96,8 +113,17 @@ export class LlmService {
     user: string,
     promptType: 'intent' | 'planRanking' = 'intent',
   ): Promise<T> {
+    if (!this.demoMode && !this.anthropicClient && !this.geminiApiKey) {
+      this.logger.error(
+        `[LlmService] DEMO_MODE is false but no LLM API key configured for prompt: "${user.slice(0, 80)}"`,
+      );
+      throw new LlmUnavailableError(
+        'DEMO_MODE is false but no LLM API key (ANTHROPIC_API_KEY / GEMINI_API_KEY) is configured',
+      );
+    }
+
     // In DEMO_MODE, return cached fixture if available
-    if (this.demoMode || !this.anthropicClient) {
+    if (this.demoMode) {
       const fixture = this.getFixtureForPrompt(user);
       if (fixture) {
         const fixturePayload = promptType === 'intent' ? fixture.intent : fixture.planRanking;
@@ -109,19 +135,22 @@ export class LlmService {
       }
 
       // If demo mode has no matching fixture and no client, throw LlmUnavailableError
-      if (!this.anthropicClient) {
+      if (!this.anthropicClient && !this.geminiApiKey) {
         throw new LlmUnavailableError(
           `No LLM client configured and no DEMO_MODE fixture found for prompt: "${user.slice(0, 80)}"`,
         );
       }
     }
 
-    // Call Anthropic with 1 retry and 15s timeout
+    // Call LLM provider with 1 retry and 15s timeout
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const result = await this.callAnthropicWithTimeout(schema, system, user);
-        return result;
+        if (this.anthropicClient) {
+          return await this.callAnthropicWithTimeout(schema, system, user);
+        } else if (this.geminiApiKey) {
+          return await this.callGeminiWithTimeout(schema, system, user);
+        }
       } catch (err: any) {
         lastError = err;
         this.logger.warn(`[LlmService] Attempt ${attempt + 1} failed: ${err.message}`);
@@ -145,6 +174,48 @@ export class LlmService {
     throw new LlmUnavailableError(`LLM generation failed after retry: ${(lastError as Error)?.message || 'Unknown error'}`, lastError);
   }
 
+  private async callGeminiWithTimeout<T>(
+    schema: ZodType<T>,
+    system: string,
+    user: string,
+  ): Promise<T> {
+    const timeoutSignal = AbortSignal.timeout(15000);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${this.geminiApiKey}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.1,
+        },
+      }),
+      signal: timeoutSignal,
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new LlmUnavailableError(`Gemini API HTTP ${res.status}: ${errText}`);
+    }
+
+    const resJson = (await res.json()) as any;
+    const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      throw new LlmUnavailableError('Gemini response missing candidate text');
+    }
+
+    const parsedJson = JSON.parse(text);
+    const validated = schema.safeParse(parsedJson);
+    if (!validated.success) {
+      throw new LlmUnavailableError(`Schema validation failed on Gemini output: ${validated.error.message}`);
+    }
+
+    return validated.data;
+  }
+
   private async callAnthropicWithTimeout<T>(
     schema: ZodType<T>,
     system: string,
@@ -160,7 +231,7 @@ export class LlmService {
     const toolName = 'submit_structured_output';
     const response = await this.anthropicClient.messages.create(
       {
-        model: 'claude-3-5-sonnet-latest',
+        model: this.model,
         max_tokens: 1024,
         system,
         messages: [{ role: 'user', content: user }],

@@ -12,15 +12,12 @@ import {
   RefreshCw,
   CheckCircle2,
   Clock,
-  ShieldCheck,
-  AlertTriangle,
   ArrowRight,
 } from 'lucide-react';
 import '../../lib/ag-grid-init';
 import { DashboardShell } from '../../components/layout/DashboardShell';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Badge } from '../../components/ui/badge';
 import { Skeleton } from '../../components/ui/progress';
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils';

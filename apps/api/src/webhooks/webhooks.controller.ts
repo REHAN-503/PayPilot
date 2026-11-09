@@ -5,7 +5,9 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { WebhooksService } from './webhooks.service.js';
 
@@ -23,7 +25,9 @@ export class WebhooksController {
     @Headers('paypal-transmission-sig') transmissionSig: string | undefined,
     @Headers('paypal-transmission-time') transmissionTime: string | undefined,
     @Body() payload: any,
+    @Req() req: Request,
   ) {
+    const rawBody = (req as any).rawBody?.toString?.('utf8');
     return this.webhooksService.handleWebhook(
       {
         authAlgo,
@@ -33,6 +37,10 @@ export class WebhooksController {
         transmissionTime,
       },
       payload,
+      {
+        rawBody,
+        // Notice: skipVerification is NEVER set here; unauthenticated forged requests will be rejected.
+      },
     );
   }
 }

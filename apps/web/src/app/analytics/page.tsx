@@ -22,28 +22,25 @@ import {
   CheckCircle2,
   ShieldBan,
   TrendingDown,
-  Sparkles,
   Bot,
   RefreshCw,
 } from 'lucide-react';
 import '../../lib/ag-grid-init';
 import { DashboardShell } from '../../components/layout/DashboardShell';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
+import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Skeleton } from '../../components/ui/progress';
 import { api } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
 const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
 
 export default function AnalyticsPage() {
-  const { data: summary, isLoading: isSummaryLoading, refetch: refetchSummary } = useQuery({
+  const { data: summary, refetch: refetchSummary } = useQuery({
     queryKey: ['analytics-summary'],
     queryFn: () => api.getAnalyticsSummary(),
   });
 
-  const { data: activities, isLoading: isActLoading, refetch: refetchActivities } = useQuery({
+  const { data: activities, refetch: refetchActivities } = useQuery({
     queryKey: ['analytics-activities'],
     queryFn: () => api.getAnalyticsAgentActivity(),
   });

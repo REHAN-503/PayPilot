@@ -24,7 +24,11 @@ export class WebhooksService {
     private readonly ledgerService: LedgerService,
   ) {}
 
-  async handleWebhook(headers: WebhookHeaders, payload: any) {
+  async handleWebhook(
+    headers: WebhookHeaders,
+    payload: any,
+    options?: { skipVerification?: boolean; rawBody?: string },
+  ) {
     // 1. Verify signature using PayPalClient
     const isValid = await this.paypalClient.verifyWebhookSignature({
       authAlgo: headers.authAlgo || '',
@@ -33,6 +37,8 @@ export class WebhooksService {
       transmissionSig: headers.transmissionSig || '',
       transmissionTime: headers.transmissionTime || '',
       webhookEvent: payload,
+      rawBody: options?.rawBody,
+      skipVerification: options?.skipVerification,
     });
 
     if (!isValid) {

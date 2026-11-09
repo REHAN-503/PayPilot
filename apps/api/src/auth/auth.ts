@@ -11,6 +11,13 @@ export function createAuth(
   prisma: PrismaService,
   options: AuthOptions,
 ) {
+  const configuredOrigins = (process.env.WEB_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const defaultDevOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  const trustedOrigins = Array.from(new Set([...defaultDevOrigins, ...configuredOrigins]));
+
   return betterAuth({
     baseURL: options.baseURL,
     secret: options.secret,
@@ -23,8 +30,6 @@ export function createAuth(
       enabled: true,
     },
 
-    trustedOrigins: [
-      'http://localhost:3000',
-    ],
+    trustedOrigins,
   });
 }

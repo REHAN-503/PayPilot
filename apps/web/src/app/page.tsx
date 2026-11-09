@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   Sparkles,
@@ -11,11 +10,7 @@ import {
   Send,
   Zap,
   ShoppingBag,
-  ExternalLink,
   ChevronRight,
-  Clock,
-  Coins,
-  Cpu,
 } from 'lucide-react';
 import { DashboardShell } from '../components/layout/DashboardShell';
 import { LiveAgentPanel, INITIAL_AGENT_STEPS, type AgentStep } from '../components/agent/LiveAgentPanel';
@@ -32,7 +27,6 @@ import { useEventStream } from '../hooks/useEventStream';
 import { toast } from 'sonner';
 
 export default function CommandCenterPage() {
-  const router = useRouter();
   const [goal, setGoal] = React.useState(DEMO_PROMPTS[0].text);
   const [isPlanning, setIsPlanning] = React.useState(false);
   const [steps, setSteps] = React.useState<AgentStep[]>(INITIAL_AGENT_STEPS);

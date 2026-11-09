@@ -4,19 +4,16 @@ import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck,
-  SlidersHorizontal,
   CheckCircle2,
   Lock,
   Handshake,
-  DollarSign,
   Info,
   Sparkles,
   Save,
   Tag,
-  AlertTriangle,
 } from 'lucide-react';
 import { DashboardShell } from '../../components/layout/DashboardShell';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Switch } from '../../components/ui/switch';

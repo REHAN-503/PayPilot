@@ -2,30 +2,22 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   CreditCard,
-  CheckCircle2,
   AlertTriangle,
-  Clock,
   Copy,
   Check,
-  ShieldCheck,
   Webhook,
-  Database,
-  Coins,
-  RefreshCw,
-  ExternalLink,
   Sparkles,
   PlayCircle,
 } from 'lucide-react';
 import { DashboardShell } from '../../../components/layout/DashboardShell';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Card } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Progress } from '../../../components/ui/progress';
 import { Skeleton } from '../../../components/ui/progress';
 import { api } from '../../../lib/api';
 import { formatCurrency, formatDate } from '../../../lib/utils';

@@ -1,28 +1,23 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Handshake,
   Bot,
   Store,
-  ShieldCheck,
   TrendingDown,
   CheckCircle2,
-  Clock,
   ArrowRight,
   Sparkles,
-  AlertCircle,
-  Coins,
   RefreshCw,
 } from 'lucide-react';
 import { DashboardShell } from '../../components/layout/DashboardShell';
 import { ApprovalSheet } from '../../components/plan/ApprovalSheet';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { api } from '../../lib/api';
 import { formatCurrency } from '../../lib/utils';
@@ -31,7 +26,6 @@ import { toast } from 'sonner';
 
 function NegotiationContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const planIdFromQuery = searchParams.get('planId');
 
   const [selectedPlanId, setSelectedPlanId] = React.useState<string>(planIdFromQuery || '');

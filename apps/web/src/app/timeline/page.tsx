@@ -6,10 +6,6 @@ import {
   GitCommitHorizontal,
   RefreshCw,
   Filter,
-  ShieldCheck,
-  CreditCard,
-  Handshake,
-  Layers,
 } from 'lucide-react';
 import { DashboardShell } from '../../components/layout/DashboardShell';
 import { TrustTimeline } from '../../components/timeline/TrustTimeline';
@@ -21,7 +17,7 @@ import { useEventStream } from '../../hooks/useEventStream';
 export default function StandaloneTimelinePage() {
   const [filterStage, setFilterStage] = React.useState<string>('ALL');
 
-  const { data: timelineData, isLoading, refetch } = useQuery({
+  const { data: timelineData, refetch } = useQuery({
     queryKey: ['timeline-all'],
     queryFn: () => api.getTimeline(),
   });
@@ -30,7 +26,7 @@ export default function StandaloneTimelinePage() {
     refetch();
   });
 
-  const allEvents = timelineData?.events || [];
+  const allEvents = React.useMemo(() => timelineData?.events || [], [timelineData?.events]);
 
   const filteredEvents = React.useMemo(() => {
     if (filterStage === 'ALL') return allEvents;

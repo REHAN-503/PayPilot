@@ -3,30 +3,25 @@
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   ShieldCheck,
-  ShieldAlert,
   AlertTriangle,
   Clock,
   Sparkles,
   Layers,
   ArrowRight,
   Handshake,
-  Repeat,
   Sliders,
-  DollarSign,
   Package,
-  Info,
-  CheckCircle2,
 } from 'lucide-react';
 import { DashboardShell } from '../../../components/layout/DashboardShell';
 import { ApprovalSheet } from '../../../components/plan/ApprovalSheet';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { Card } from '../../../components/ui/card';
 import { Slider } from '../../../components/ui/switch';
 import { Skeleton } from '../../../components/ui/progress';
 import { api } from '../../../lib/api';
@@ -35,7 +30,6 @@ import { toast } from 'sonner';
 
 function PlanDetailContent() {
   const params = useParams();
-  const router = useRouter();
   const planId = params.id as string;
 
   const [approvalSheetOpen, setApprovalSheetOpen] = React.useState(false);
@@ -121,18 +115,6 @@ function PlanDetailContent() {
       toast.error('Simulation Failed', { description: message });
     } finally {
       setIsWhatIfRunning(false);
-    }
-  };
-
-  const handleSelectAlternative = async (productId: string) => {
-    try {
-      toast.loading('Swapping to alternative item...', { id: 'swap-alt' });
-      await api.selectAlternative(plan.id, productId);
-      toast.success('Plan Updated with Alternative Product', { id: 'swap-alt' });
-      await refetch();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error('Swap Failed', { id: 'swap-alt', description: message });
     }
   };
 

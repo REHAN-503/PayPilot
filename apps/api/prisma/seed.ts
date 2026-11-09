@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { hashPassword } from 'better-auth/crypto';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -204,7 +205,77 @@ async function main() {
     });
   }
 
+  // Seed Demo User and Credentials
+  const demoEmail = 'demo@paypilot.dev';
+  const demoPassword = process.env.DEMO_USER_PASSWORD || 'Password123!';
+  const hashedPassword = await hashPassword(demoPassword);
+
+  let demoUser = await prisma.user.findUnique({
+    where: { email: demoEmail },
+  });
+
+  if (!demoUser) {
+    demoUser = await prisma.user.create({
+      data: {
+        id: 'usr_demo_paypilot_hackathon',
+        email: demoEmail,
+        name: 'PayPilot Demo Judge',
+        emailVerified: true,
+      },
+    });
+  }
+
+  // Upsert credential account for demo login
+  const existingAccount = await prisma.account.findFirst({
+    where: { userId: demoUser.id, providerId: 'credential' },
+  });
+
+  if (!existingAccount) {
+    await prisma.account.create({
+      data: {
+        id: 'acc_demo_paypilot_hackathon',
+        accountId: demoUser.id,
+        providerId: 'credential',
+        userId: demoUser.id,
+        password: hashedPassword,
+      },
+    });
+  } else {
+    await prisma.account.update({
+      where: { id: existingAccount.id },
+      data: { password: hashedPassword },
+    });
+  }
+
+  // Seed UserPolicy for Demo User:
+  // maxTransaction 500, daily 600, monthly 1500, requireApprovalAbove 100, allowNegotiation true
+  await prisma.userPolicy.upsert({
+    where: { userId: demoUser.id },
+    create: {
+      userId: demoUser.id,
+      currency: 'USD',
+      maxTransactionAmount: 500,
+      dailySpendingLimit: 600,
+      monthlySpendingLimit: 1500,
+      requireApprovalAbove: 100,
+      allowNegotiation: true,
+      allowAutoExecute: false,
+      autonomyMode: 'ASK_EVERY_TIME',
+    },
+    update: {
+      currency: 'USD',
+      maxTransactionAmount: 500,
+      dailySpendingLimit: 600,
+      monthlySpendingLimit: 1500,
+      requireApprovalAbove: 100,
+      allowNegotiation: true,
+      allowAutoExecute: false,
+      autonomyMode: 'ASK_EVERY_TIME',
+    },
+  });
+
   console.log(`Successfully seeded ${products.length} PayPilot products.`);
+  console.log(`Successfully seeded demo user (${demoEmail}) and deterministic UserPolicy.`);
 }
 
 main()

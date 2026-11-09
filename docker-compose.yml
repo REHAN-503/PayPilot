@@ -4,9 +4,9 @@ services:
     container_name: paypilot-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: paypilot
-      POSTGRES_PASSWORD: YOUR_PASSWORD
-      POSTGRES_DB: paypilot
+      POSTGRES_USER: ${POSTGRES_USER:-paypilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paypilot_password}
+      POSTGRES_DB: ${POSTGRES_DB:-paypilot}
     ports:
       - "5432:5432"
     volumes:

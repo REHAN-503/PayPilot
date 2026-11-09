@@ -37,7 +37,7 @@ export class DevWebhooksController {
   @Post('simulate')
   async simulate(@Body() body: SimulateWebhookDto) {
     const nodeEnv = this.config.get<string>('NODE_ENV');
-    const demoMode = this.config.get<string>('DEMO_MODE') !== 'false';
+    const demoMode = this.config.get<string>('DEMO_MODE') === 'true';
 
     if (nodeEnv === 'production' || !demoMode) {
       throw new ForbiddenException(
@@ -159,8 +159,12 @@ export class DevWebhooksController {
     };
 
     const result = await this.webhooksService.handleWebhook(
-      { transmissionSig: 'SIMULATED_MOCK_SIGNATURE' },
+      {
+        transmissionId: `SIM-${Date.now()}`,
+        transmissionTime: new Date().toISOString(),
+      },
       payload,
+      { skipVerification: true },
     );
 
     return {

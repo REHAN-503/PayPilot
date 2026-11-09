@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { ShoppingBag, ArrowRight, ShieldCheck, Clock, Layers } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Clock, Layers } from 'lucide-react';
 import { DashboardShell } from '../../components/layout/DashboardShell';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';

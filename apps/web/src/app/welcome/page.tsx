@@ -10,10 +10,6 @@ import {
   CreditCard,
   Sparkles,
   ArrowRight,
-  Lock,
-  CheckCircle2,
-  Sliders,
-  DollarSign,
   Cpu,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';

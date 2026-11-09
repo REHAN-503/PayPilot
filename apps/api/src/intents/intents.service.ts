@@ -5,9 +5,9 @@ import { LlmService } from '../agent/llm/llm.service.js';
 import { LlmUnavailableError } from '../agent/llm/llm-errors.js';
 import {
   parseIntentWithLlm,
+  sanitizeUserPrompt,
   type ParsedIntent,
 } from '../agent/intent-parser.js';
-import { parseIntent as fallbackRegexParseIntent } from './intent-parser.js';
 import {
   rankAndPlanWithLlm,
   type CandidateProduct,
@@ -37,7 +37,7 @@ export class IntentsService {
     private readonly llmService: LlmService,
     private readonly replanService: ReplanService,
   ) {
-    this.demoMode = this.config.get<string>('DEMO_MODE') !== 'false';
+    this.demoMode = this.config.get<string>('DEMO_MODE') === 'true';
   }
 
   async calculateHistoricalSpend(userId: string) {
@@ -115,19 +115,19 @@ export class IntentsService {
       wasClamped = result.wasClamped;
     } catch (err) {
       if (err instanceof LlmUnavailableError) {
-        this.logger.warn(`LLM unavailable for intent parsing, falling back to regex: ${err.message}`);
+        this.logger.warn(`LLM unavailable for intent parsing, falling back to deterministic extraction: ${err.message}`);
         fallbackUsed = true;
-        const regexResult = await fallbackRegexParseIntent(rawInput, { demoMode: true });
+        const sanitized = sanitizeUserPrompt(rawInput);
         parsedIntent = {
-          goal: regexResult.explanation,
-          category: regexResult.category ?? 'Electronics',
-          minBudget: regexResult.minBudget ?? null,
-          maxBudget: regexResult.maxBudget ?? null,
-          mustHave: regexResult.keywords,
+          goal: sanitized,
+          category: 'Electronics',
+          minBudget: null,
+          maxBudget: policyCeiling ?? null,
+          mustHave: [],
           niceToHave: [],
-          useCase: regexResult.explanation,
+          useCase: sanitized,
           urgency: 'NORMAL',
-          quantity: regexResult.quantity,
+          quantity: 1,
           riskNotes: isAdversarial ? ['Adversarial patterns flagged by fallback parser.'] : [],
         };
       } else {

@@ -7,7 +7,6 @@ import {
   FileCheck2,
   Terminal,
   ShieldCheck,
-  ShieldAlert,
   AlertTriangle,
   UserCheck,
   CreditCard,
@@ -19,7 +18,6 @@ import {
   ChevronUp,
   Copy,
   Check,
-  Sparkles,
   Bot,
 } from 'lucide-react';
 import type { TimelineEvent } from '../../lib/schemas';

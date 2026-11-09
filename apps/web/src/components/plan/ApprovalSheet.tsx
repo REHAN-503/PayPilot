@@ -5,12 +5,9 @@ import { useRouter } from 'next/navigation';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import {
   ShieldCheck,
-  ShieldAlert,
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  ArrowRight,
-  CreditCard,
   Lock,
   Clock,
   Sparkles,

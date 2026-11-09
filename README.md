@@ -12,15 +12,35 @@
 
 ---
 
-## 📸 Screenshots & Cockpit Previews
+## 📸 Cockpit Previews & Visual Walkthrough
 
-| Command Center & Live Agent Stepper | Interactive Governance Approval Sheet |
-|---|---|
-| ![Command Center](https://placehold.co/1200x675/070b14/3b82f6?text=PayPilot+Command+Center+%26+Live+Agent+Panel) | ![Approval Sheet](https://placehold.co/1200x675/070b14/10b981?text=Two-Party+Governance+Approval+Sheet) |
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│  PayPilot Command Center                               [PayPal Sandbox — No Real Money] │
+├──────────────────────────────────────────────────────┬─────────────────────────────────┤
+│  🎯 Purchase Intent Goal                             │  ⚡ Live Agent Execution         │
+│  "Find developer monitor with USB-C under $250"      │  ✔ [PARSE] Intent Extracted     │
+│  ──────────────────────────────────────────────────  │  ✔ [CATALOG] 17 SKUs Scanned    │
+│  [Prompt 1: Dev Monitor]  [Prompt 2: Over Budget]    │  ✔ [RANK] NovaView 27" Ranked   │
+│  [Prompt 3: Multi-Item]   [Prompt 4: Adversarial]    │  ✔ [POLICY] Limit $250.00 Valid │
+│                                                      │  ✔ [RISK] Gate Score: 15 (LOW)  │
+│  [ Plan It ]                                         │  ● [READY] Plan Ready (#pln_8f) │
+├──────────────────────────────────────────────────────┴─────────────────────────────────┤
+│  Recommended Plan: NovaView 27" Pro Developer Monitor ($249.50)  [ Review & Authorize ]│
+└────────────────────────────────────────────────────────────────────────────────────────┘
 
-| Multi-Agent Autonomous Negotiation | Verifiable Trust Timeline |
-|---|---|
-| ![Negotiation](https://placehold.co/1200x675/070b14/8b5cf6?text=Buyer+Agent+vs+Merchant+Agent+Negotiation) | ![Trust Timeline](https://placehold.co/1200x675/070b14/06b6d4?text=End-to-End+Verifiable+Trust+Timeline) |
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│  🛡️ Two-Party Governance Approval Sheet                                                │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  Payee: TechSupplies Global (PayPal Sandbox)           Total: $249.50 USD              │
+│  Policy Checks:                                                                        │
+│    ✔ Transaction Ceiling: $249.50 <= $500.00 Limit                                     │
+│    ✔ Daily Spending: $249.50 remaining in $600.00 daily budget                         │
+│    ✔ Behavioral Risk Score: 15 / 100 (Passes Threshold)                                │
+│                                                                                        │
+│  [ Pay with PayPal ]  (Official @paypal/react-paypal-js Smart Buttons)                 │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -38,7 +58,7 @@ PayPilot enforces a strict architectural boundary between **stochastic generativ
 $$\text{\bf User Intent} \longrightarrow \text{\bf AI Planning} \longrightarrow \text{\bf Deterministic Policy Guard} \longrightarrow \text{\bf Human Authorization} \longrightarrow \text{\bf PayPal Orders v2} \longrightarrow \text{\bf Webhook Verification} \longrightarrow \text{\bf Immutable Ledger}$$
 
 - The LLM **never touches credentials**, **never moves money**, and **cannot bypass policy limits**.
-- Hard spending limits, velocity checks, and risk gates are pure TypeScript functions with **100% test coverage**.
+- Hard spending limits, velocity checks, and risk gates are pure TypeScript functions with deterministic, heavily-tested behaviour.
 - Payments only settle once **PayPal's cryptographic webhook signature** is received and verified.
 
 ---
@@ -197,10 +217,40 @@ PayPilot includes pre-seeded demo accounts with active policies:
 
 | Account | Email | Password | Role |
 |---|---|---|---|
-| **Demo User** | `demo@paypilot.dev` | `Password123!` | Standard procurement user ($250 cap, Ask Every Time) |
-| **Tester User** | `tester@paypilot.ai` | `Password123!` | Historical user with prior transactions & captured ledger |
+| **Demo User** | `demo@paypilot.dev` | `Password123!` | Procurement user (maxTx \$500, daily \$600, monthly \$1500) |
 
 > **Tip**: Click the prominent **"Continue as Demo User"** button on the `/welcome` or `/login` screen for 1-click sign-in without typing credentials.
+
+---
+
+## 🔧 Environment Variables Reference
+
+### `apps/api/.env` (Backend)
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `BETTER_AUTH_URL` | ✅ | Full API base URL (e.g. `http://localhost:4000`) |
+| `BETTER_AUTH_SECRET` | ✅ | 32+ char secret for session signing |
+| `DEMO_MODE` | — | `"true"` for offline mock mode (no API keys needed) |
+| `DEMO_USER_PASSWORD` | — | Password for seeded demo user (default: `Password123!`) |
+| `ANTHROPIC_API_KEY` | Live only | Anthropic API key for Claude LLM |
+| `GEMINI_API_KEY` | Live only | Google Gemini API key (alternative to Anthropic) |
+| `LLM_MODEL` | — | Model override (e.g. `claude-3-5-sonnet-20241022`, `gemini-1.5-pro`) |
+| `PAYPAL_CLIENT_ID` | Live only | PayPal Sandbox REST API client ID |
+| `PAYPAL_CLIENT_SECRET` | Live only | PayPal Sandbox REST API secret |
+| `PAYPAL_WEBHOOK_ID` | Live only | PayPal Webhook ID from Developer Dashboard |
+| `WEB_ORIGIN` | Prod only | Comma-separated trusted origins (e.g. `https://paypilot.onrender.com`) |
+| `PORT` | — | API listening port (default: `4000`) |
+
+### `apps/web/.env.local` (Frontend)
+
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | ✅ | Backend API base URL (e.g. `http://localhost:4000`) |
+| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | ✅ | PayPal Client ID for Smart Buttons SDK (`sb` for sandbox) |
+
+> Copy from examples: `cp apps/api/.env.example apps/api/.env && cp apps/web/.env.example apps/web/.env.local`
 
 ---
 
