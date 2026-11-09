@@ -155,11 +155,42 @@ paths:
       responses:
         '200':
           description: User policy and spend metrics
-    patch:
+    put:
       summary: Update spending limits
       responses:
         '200':
           description: Policy updated
+
+  /policies/simulate:
+    post:
+      summary: Simulate a purchase against policy
+      responses:
+        '200':
+          description: Policy decision
+
+  /receipts/{paymentId}:
+    get:
+      summary: Get a payment trust receipt
+      parameters:
+        - in: path
+          name: paymentId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Receipt evidence and chain status
+
+  /receipts/{paymentId}/verify:
+    get:
+      summary: Verify a receipt hash-chain
+      parameters:
+        - in: path
+          name: paymentId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Verification result
 
   /timeline:
     get:
@@ -167,4 +198,3 @@ paths:
       responses:
         '200':
           description: Chronological event list
-

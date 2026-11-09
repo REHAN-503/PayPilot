@@ -18,6 +18,7 @@ import { PayPalModule } from './paypal/paypal.module.js';
 import { NegotiationModule } from './negotiation/negotiation.module.js';
 import { TimelineModule } from './timeline/timeline.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { ReceiptsModule } from './receipts/receipts.module.js';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
     NegotiationModule,
     TimelineModule,
     AnalyticsModule,
+    ReceiptsModule,
     ProductsModule,
     IntentsModule,
     PlansModule,

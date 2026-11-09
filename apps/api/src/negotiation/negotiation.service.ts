@@ -56,7 +56,7 @@ export class NegotiationService {
     private readonly llmService: LlmService,
   ) {}
 
-  async startNegotiation(userId: string, planId: string): Promise<SafeNegotiationResponse> {
+  async startNegotiation(userId: string, planId: string, targetDiscountPercent?: number): Promise<SafeNegotiationResponse> {
     const plan = await this.prisma.purchasePlan.findFirst({
       where: { id: planId, userId },
       include: {
@@ -140,7 +140,10 @@ export class NegotiationService {
     const dailyRemaining = policy.dailySpendingLimit
       ? Math.max(0, Number(policy.dailySpendingLimit) - dailySpent)
       : initialPrice;
-    const buyerCeiling = Math.min(initialPrice, maxTxLimit, dailyRemaining);
+    const targetCeiling = targetDiscountPercent == null
+      ? initialPrice
+      : initialPrice * (1 - targetDiscountPercent / 100);
+    const buyerCeiling = Math.min(initialPrice, maxTxLimit, dailyRemaining, targetCeiling);
 
     // Merchant floor: server-side only! Never leak to buyer agent or client
     const minUnitFloor = product?.minPrice

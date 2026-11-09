@@ -111,6 +111,14 @@ export const api = {
       risk: RiskAssessment;
     }>(`/api/plans/${id}/evaluate`, { method: 'POST' }),
 
+  getConfigHealth: () =>
+    request<{
+      llmMode: 'fixture' | 'live';
+      paypalMode: 'sandbox-live' | 'mock';
+      simulatorEnabled: boolean;
+      llmConfigured: boolean;
+    }>('/api/health/config', { method: 'GET' }),
+
   approvePlan: (id: string, note?: string) =>
     request<PurchasePlan>(`/api/plans/${id}/approve`, {
       method: 'POST',
@@ -130,15 +138,16 @@ export const api = {
     }),
 
   selectAlternative: (id: string, productId: string) =>
-    request<PurchasePlan>(`/api/plans/${id}/select-alternative`, {
-      method: 'POST',
+    request<PurchasePlan>(`/api/plans/${id}/alternative`, {
+      method: 'PATCH',
       body: JSON.stringify({ productId }),
-    }),
+    }, PurchasePlanSchema),
 
   // Negotiation
-  startNegotiation: (planId: string) =>
+  startNegotiation: (planId: string, targetDiscountPercent?: number) =>
     request<Negotiation>(`/api/plans/${planId}/negotiate`, {
       method: 'POST',
+      body: JSON.stringify({ targetDiscountPercent }),
     }, NegotiationSchema),
 
   getNegotiation: (id: string) =>
@@ -177,6 +186,9 @@ export const api = {
       method: 'GET',
     });
   },
+  exportLedger: (format: 'csv' | 'json') => `/api/ledger/export?format=${format}`,
+  exportTimeline: (format: 'csv' | 'json', planId?: string) =>
+    `/api/timeline/export?format=${format}${planId ? `&planId=${planId}` : ''}`,
 
   // Policy
   getPolicy: () =>
@@ -186,9 +198,20 @@ export const api = {
 
   updatePolicy: (policy: Partial<UserPolicy>) =>
     request<UserPolicy>('/api/policies/me', {
-      method: 'PATCH',
+      method: 'PUT',
       body: JSON.stringify(policy),
     }, UserPolicySchema),
+  simulatePolicy: (input: { category: string; amount: number; merchant: string }) =>
+    request<{ decision: string; violations: string[]; reasons: string[]; merchant: string; amount: number; category: string }>(
+      '/api/policies/simulate',
+      { method: 'POST', body: JSON.stringify(input) },
+    ),
+  getReceipt: (paymentId: string) => request<Record<string, unknown>>(`/api/receipts/${paymentId}`, { method: 'GET' }),
+  verifyReceipt: (paymentId: string) =>
+    request<{ valid: boolean; brokenAtEventId: string | null; events: number }>(
+      `/api/receipts/${paymentId}/verify`,
+      { method: 'GET' },
+    ),
 
   // Analytics
   getAnalyticsSummary: () =>

@@ -12,38 +12,6 @@
 
 ---
 
-## 📸 Cockpit Previews & Visual Walkthrough
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  PayPilot Command Center                               [PayPal Sandbox — No Real Money] │
-├──────────────────────────────────────────────────────┬─────────────────────────────────┤
-│  🎯 Purchase Intent Goal                             │  ⚡ Live Agent Execution         │
-│  "Find developer monitor with USB-C under $250"      │  ✔ [PARSE] Intent Extracted     │
-│  ──────────────────────────────────────────────────  │  ✔ [CATALOG] 17 SKUs Scanned    │
-│  [Prompt 1: Dev Monitor]  [Prompt 2: Over Budget]    │  ✔ [RANK] NovaView 27" Ranked   │
-│  [Prompt 3: Multi-Item]   [Prompt 4: Adversarial]    │  ✔ [POLICY] Limit $250.00 Valid │
-│                                                      │  ✔ [RISK] Gate Score: 15 (LOW)  │
-│  [ Plan It ]                                         │  ● [READY] Plan Ready (#pln_8f) │
-├──────────────────────────────────────────────────────┴─────────────────────────────────┤
-│  Recommended Plan: NovaView 27" Pro Developer Monitor ($249.50)  [ Review & Authorize ]│
-└────────────────────────────────────────────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  🛡️ Two-Party Governance Approval Sheet                                                │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│  Payee: TechSupplies Global (PayPal Sandbox)           Total: $249.50 USD              │
-│  Policy Checks:                                                                        │
-│    ✔ Transaction Ceiling: $249.50 <= $500.00 Limit                                     │
-│    ✔ Daily Spending: $249.50 remaining in $600.00 daily budget                         │
-│    ✔ Behavioral Risk Score: 15 / 100 (Passes Threshold)                                │
-│                                                                                        │
-│  [ Pay with PayPal ]  (Official @paypal/react-paypal-js Smart Buttons)                 │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
 ## 🎯 Problem & Solution
 
 ### The Problem
@@ -213,6 +181,32 @@ Open **`http://localhost:3000`** in your browser.
 
 ## 🎮 Demo Credentials & Quick Test
 
+## Run it in 5 minutes
+
+```bash
+pnpm install
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+pnpm db:up && pnpm db:migrate && pnpm db:seed
+pnpm dev
+```
+
+Open `http://localhost:3000/welcome` and choose **Continue as Demo User**. The API reads
+`apps/api/.env`; the web app reads `apps/web/.env.local`. Set
+`NEXT_PUBLIC_API_URL` to the API origin and use `NEXT_PUBLIC_PAYPAL_CLIENT_ID=sb` for
+the PayPal sandbox UI.
+
+## What is real vs simulated
+
+| Capability | Default demo | With credentials |
+|---|---|---|
+| LLM planning | Deterministic fixtures | Provider API (`LLM_FORCE_LIVE=true`) |
+| PayPal orders/capture | Local mock only when credentials are absent | PayPal Sandbox Orders v2 |
+| Webhook confirmation | Dev simulator when enabled outside production | Verified PayPal webhook |
+| Policy/risk/ledger | Real database and deterministic rules | Same |
+
+`GET /health/config` exposes non-secret mode indicators used by the web status chips.
+
 PayPilot includes pre-seeded demo accounts with active policies:
 
 | Account | Email | Password | Role |
@@ -233,10 +227,13 @@ PayPilot includes pre-seeded demo accounts with active policies:
 | `BETTER_AUTH_URL` | ✅ | Full API base URL (e.g. `http://localhost:4000`) |
 | `BETTER_AUTH_SECRET` | ✅ | 32+ char secret for session signing |
 | `DEMO_MODE` | — | `"true"` for offline mock mode (no API keys needed) |
+| `LLM_FORCE_LIVE` | — | `"true"` disables fixtures and requires a live LLM key |
+| `LLM_PROVIDER` | — | `anthropic` or `gemini` |
+| `ENABLE_WEBHOOK_SIMULATOR` | — | `"true"` enables the dev simulator outside production |
 | `DEMO_USER_PASSWORD` | — | Password for seeded demo user (default: `Password123!`) |
 | `ANTHROPIC_API_KEY` | Live only | Anthropic API key for Claude LLM |
 | `GEMINI_API_KEY` | Live only | Google Gemini API key (alternative to Anthropic) |
-| `LLM_MODEL` | — | Model override (e.g. `claude-3-5-sonnet-20241022`, `gemini-1.5-pro`) |
+| `LLM_MODEL` | — | Model name (defaults to `claude-sonnet-5-5` for Anthropic) |
 | `PAYPAL_CLIENT_ID` | Live only | PayPal Sandbox REST API client ID |
 | `PAYPAL_CLIENT_SECRET` | Live only | PayPal Sandbox REST API secret |
 | `PAYPAL_WEBHOOK_ID` | Live only | PayPal Webhook ID from Developer Dashboard |
@@ -269,7 +266,7 @@ If you don't have PayPal developer credentials handy, leave `DEMO_MODE=true` in 
 ## 🧪 Running the Test Suite
 
 ```bash
-# Run all 402 unit & state machine tests across packages
+# Run all unit and state machine tests across packages
 pnpm test
 
 # Run strict TypeScript typecheck (0 errors, no 'any')
@@ -278,8 +275,11 @@ pnpm typecheck
 # Run lint checks
 pnpm lint
 
-# Run Playwright end-to-end smoke test (Chromium + Mobile 390px)
-cd apps/web && npx playwright test
+# Run Playwright end-to-end smoke test
+pnpm test:e2e
+
+# Run the API smoke script against a running API
+pnpm smoke
 ```
 
 ---

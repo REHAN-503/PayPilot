@@ -218,6 +218,8 @@ export const UserPolicySchema = z.object({
   allowedCategories: z.array(z.string()).default([]),
   blockedCategories: z.array(z.string()).default([]),
   autoApproveCategories: z.array(z.string()).default([]),
+  agentPaused: z.boolean().default(false),
+  maxDiscountSeekPercent: z.union([z.string(), z.number()]).nullable().optional(),
 });
 export type UserPolicy = z.infer<typeof UserPolicySchema>;
 
@@ -296,4 +298,3 @@ export const DEMO_PROMPTS: DemoPromptItem[] = [
     description: 'Demonstrates prompt injection hardening and hard deterministic policy ceilings.',
   },
 ];
-

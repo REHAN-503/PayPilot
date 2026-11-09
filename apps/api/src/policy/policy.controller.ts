@@ -3,11 +3,12 @@ import {
   Body,
   Controller,
   Get,
+  Post,
   Put,
 } from '@nestjs/common';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { PolicyService } from './policy.service.js';
-import { updatePolicySchema } from './policy.schema.js';
+import { policySimulationSchema, updatePolicySchema } from './policy.schema.js';
 
 @Controller(['policy', 'policies'])
 export class PolicyController {
@@ -33,5 +34,16 @@ export class PolicyController {
 
     return this.policyService.updatePolicy(session.user.id, parsed.data);
   }
-}
 
+  @Post('simulate')
+  simulate(@Session() session: UserSession, @Body() body: unknown) {
+    const parsed = policySimulationSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        message: 'Invalid simulation payload',
+        errors: parsed.error.issues,
+      });
+    }
+    return this.policyService.simulate(session.user.id, parsed.data);
+  }
+}

@@ -2,7 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
+  NotFoundException,
   Post,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -37,11 +37,15 @@ export class DevWebhooksController {
   @Post('simulate')
   async simulate(@Body() body: SimulateWebhookDto) {
     const nodeEnv = this.config.get<string>('NODE_ENV');
-    const demoMode = this.config.get<string>('DEMO_MODE') === 'true';
+    const simulatorFlag = this.config.get<string>('ENABLE_WEBHOOK_SIMULATOR');
+    const simulatorEnabled =
+      simulatorFlag === 'true' ||
+      (simulatorFlag === undefined &&
+        this.config.get<string>('DEMO_MODE') === 'true');
 
-    if (nodeEnv === 'production' || !demoMode) {
-      throw new ForbiddenException(
-        'Webhook simulation endpoint is disabled in production and non-demo environments.',
+    if (nodeEnv === 'production' || !simulatorEnabled) {
+      throw new NotFoundException(
+        'Webhook simulation endpoint is disabled unless ENABLE_WEBHOOK_SIMULATOR=true in a non-production environment.',
       );
     }
 
@@ -180,4 +184,3 @@ export class DevWebhooksController {
     };
   }
 }
-

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -9,6 +10,7 @@ import {
   transitionIntentStatus,
   transitionPlanStatus,
 } from '../common/state/state-machine.js';
+import { PolicyService } from '../policy/policy.service.js';
 
 export interface DecisionDto {
   decision: 'APPROVED' | 'REJECTED';
@@ -17,7 +19,10 @@ export interface DecisionDto {
 
 @Injectable()
 export class ApprovalsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly policyService?: PolicyService,
+  ) {}
 
   async findPending(userId: string) {
     return this.prisma.approval.findMany({
@@ -50,6 +55,10 @@ export class ApprovalsService {
     if (!approval) {
       throw new NotFoundException('Approval request not found');
     }
+    await this.policyService?.assertAgentActive(userId, {
+      planId: approval.planId,
+      intentId: approval.plan.intentId,
+    });
 
     if (approval.status !== 'PENDING') {
       throw new BadRequestException(
@@ -106,4 +115,3 @@ export class ApprovalsService {
     });
   }
 }
-

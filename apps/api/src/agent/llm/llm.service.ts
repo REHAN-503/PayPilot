@@ -39,6 +39,7 @@ export class LlmService {
   private readonly geminiApiKey?: string;
   private readonly model: string;
   private readonly demoMode: boolean;
+  private readonly forceLive: boolean;
   private readonly anthropicClient?: Anthropic;
   private readonly fixtures: FixtureEntry[] = [
     prompt1Fixture as FixtureEntry,
@@ -48,14 +49,17 @@ export class LlmService {
   ];
 
   constructor(private readonly config: ConfigService) {
-    this.provider = (this.config.get<string>('LLM_PROVIDER') as any) || 'anthropic';
+    const configuredProvider = this.config.get<string>('LLM_PROVIDER');
+    this.provider =
+      configuredProvider === 'gemini' || configuredProvider === 'openai'
+        ? configuredProvider
+        : 'anthropic';
     this.anthropicApiKey = this.config.get<string>('ANTHROPIC_API_KEY');
     this.geminiApiKey = this.config.get<string>('GEMINI_API_KEY');
     this.demoMode = this.config.get<string>('DEMO_MODE') === 'true';
+    this.forceLive = this.config.get<string>('LLM_FORCE_LIVE') === 'true';
 
-    this.model =
-      this.config.get<string>('LLM_MODEL') ||
-      (this.geminiApiKey ? 'gemini-1.5-pro' : 'claude-3-5-sonnet-20241022');
+    this.model = this.config.get<string>('LLM_MODEL') || 'claude-sonnet-5-5';
 
     if (
       this.anthropicApiKey &&
@@ -67,15 +71,27 @@ export class LlmService {
       });
     }
 
-    if (!this.demoMode && !this.anthropicClient && !this.geminiApiKey) {
+    this.logger.log(
+      `[LlmService] provider=${this.provider} model=${this.model} mode=${this.isFixtureMode() ? 'fixture' : 'live'}`,
+    );
+
+    if (!this.isFixtureMode() && !this.anthropicClient && !this.geminiApiKey) {
       this.logger.error(
-        '[LlmService] CRITICAL CONFIGURATION ERROR: DEMO_MODE is false (or unset), but no LLM API key (ANTHROPIC_API_KEY / GEMINI_API_KEY) is configured. All live LLM requests will fail.',
+        '[LlmService] Live LLM mode requires a configured provider API key.',
       );
     }
   }
 
+  isFixtureMode(): boolean {
+    return this.demoMode && !this.forceLive;
+  }
+
+  isForceLive(): boolean {
+    return this.forceLive;
+  }
+
   isDemoMode(): boolean {
-    return this.demoMode || (!this.anthropicClient && !this.geminiApiKey);
+    return this.isFixtureMode();
   }
 
   getFixtureForPrompt(userText: string): FixtureEntry | null {
@@ -115,9 +131,9 @@ export class LlmService {
   ): Promise<T> {
     const hasLiveLlm = Boolean(this.anthropicClient || this.geminiApiKey);
 
-    if (!this.demoMode && !hasLiveLlm) {
+    if (!this.isFixtureMode() && !hasLiveLlm) {
       this.logger.error(
-        `[LlmService] DEMO_MODE is false but no LLM API key configured for prompt: "${user.slice(0, 80)}"`,
+        `[LlmService] Live LLM mode has no provider API key for prompt: "${user.slice(0, 80)}"`,
       );
       throw new LlmUnavailableError(
         'DEMO_MODE is false but no LLM API key (ANTHROPIC_API_KEY / GEMINI_API_KEY) is configured',
@@ -126,7 +142,7 @@ export class LlmService {
 
     // When a live LLM key is configured, ALWAYS invoke the real LLM provider first.
     // Cached demo fixtures are ONLY used when no live LLM client exists, or as an emergency fallback.
-    if (!hasLiveLlm && this.demoMode) {
+    if (!hasLiveLlm && this.isFixtureMode()) {
       const fixture = this.getFixtureForPrompt(user);
       if (fixture) {
         const fixturePayload = promptType === 'intent' ? fixture.intent : fixture.planRanking;
@@ -151,17 +167,18 @@ export class LlmService {
         } else if (this.geminiApiKey) {
           return await this.callGeminiWithTimeout(schema, system, user);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         lastError = err;
-        this.logger.warn(`[LlmService] Attempt ${attempt + 1} failed: ${err.message}`);
+        const message = err instanceof Error ? err.message : 'Unknown provider error';
+        this.logger.warn(`[LlmService] Attempt ${attempt + 1} failed: ${message}`);
         if (attempt === 0) {
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }
     }
 
-    // If live call failed after retry and DEMO_MODE is on, fall back to fixture if any match exists
-    if (this.demoMode) {
+    // Fixture mode may recover from a transient provider failure with a known fixture.
+    if (this.isFixtureMode()) {
       const fallbackFixture = this.getFixtureForPrompt(user);
       if (fallbackFixture) {
         const fixturePayload = promptType === 'intent' ? fallbackFixture.intent : fallbackFixture.planRanking;
@@ -285,4 +302,3 @@ export class LlmService {
     return validated.data;
   }
 }
-

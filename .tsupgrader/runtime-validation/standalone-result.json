@@ -1,0 +1,130 @@
+{
+  "planHash": "b4d949bac406c27997bed6275f0324f3ed46e3ff6b5e6134e726886baa6c85b3",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-11-09T10:14:23.6729328Z",
+  "retryCount": 0,
+  "resetBaseline": false,
+  "complete": true,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 110,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "tsc-no-emit",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "$ turbo typecheck\n\n   \u2022 turbo 2.11.10\n   \u2022 Packages in scope: api, web\n   \u2022 Running typecheck in 2 packages\n   \u2022 Remote caching disabled\n\napi:typecheck: cache hit, replaying logs f5e5be9ee664c84c\nweb:typecheck: cache hit, replaying logs 680e7e9c55c7e324\napi:typecheck: $ tsc --noEmit\nweb:typecheck: $ tsc --noEmit\n\n Tasks:    2 successful, 2 total\nCached:    2 cached, 2 total\n  Time:    23ms \u003E\u003E\u003E FULL TURBO\n\n",
+        "durationMs": 88
+      },
+      {
+        "name": "lint-pass",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "$ turbo lint\n\n   \u2022 turbo 2.11.10\n   \u2022 Packages in scope: api, web\n   \u2022 Running lint in 2 packages\n   \u2022 Remote caching disabled\n\napi:lint: cache miss, executing 2d75f42b05e1a1b1\nweb:lint: cache hit, replaying logs 0ac5f11779c4d2ff\nweb:lint: $ eslint\napi:lint: $ oxlint --type-aware src/ test/\napi:lint: Found 0 warnings and 0 errors.\napi:lint: Finished in 538ms on 88 files with 111 rules using 12 threads.\n\n Tasks:    2 successful, 2 total\nCached:    1 cached, 2 total\n  Time:    618ms \n\n",
+        "durationMs": 684
+      },
+      {
+        "name": "tests-pass",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "$ turbo test\n\n   \u2022 turbo 2.11.10\n   \u2022 Packages in scope: api, web\n   \u2022 Running test in 2 packages\n   \u2022 Remote caching disabled\n\napi:test: cache hit, replaying logs ac559761e1be056e\napi:test: $ prisma generate\napi:test: Loaded Prisma config from prisma.config.ts.\napi:test: \napi:test: Prisma schema loaded from prisma/schema.prisma.\napi:test: \napi:test: \u2714 Generated Prisma Client (7.10.1) to ./src/generated/prisma in 184ms\napi:test: \napi:test: $ vitest run\napi:test: \napi:test: \u001B[1m\u001B[30m\u001B[46m RUN \u001B[49m\u001B[39m\u001B[22m \u001B[36mv4.1.12 \u001B[39m\u001B[90m/home/nulltrace/Documents/Projects/PayPal Hackathon/PayPilot/apps/api\u001B[39m\napi:test: \napi:test:  \u001B[32m\u2713\u001B[39m src/policy/risk.gate.spec.ts \u001B[2m(\u001B[22m\u001B[2m69 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[32m 37\u001B[2mms\u001B[22m\u001B[39m\napi:test:  \u001B[32m\u2713\u001B[39m src/state-machines/intent.sm.spec.ts \u001B[2m(\u001B[22m\u001B[2m76 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[32m 33\u001B[2mms\u001B[22m\u001B[39m\napi:test:  \u001B[32m\u2713\u001B[39m src/state-machines/plan.sm.spec.ts \u001B[2m(\u001B[22m\u001B[2m110 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[32m 80\u001B[2mms\u001B[22m\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Missing valid PayPal credentials for webhook signature verification\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Missing valid PayPal credentials for webhook signature verification\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Rejected webhook: skipVerification flag is forbidden in production or non-demo mode\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Rejected webhook: skipVerification flag is forbidden in production or non-demo mode\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] No PAYPAL_WEBHOOK_ID configured; rejecting unverified webhook\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Missing valid PayPal credentials for webhook signature verification\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Missing required PayPal transmission headers (authAlgo=false, certUrl=true, transmissionId=true, transmissionSig=true, transmissionTime=true); rejecting unverified webhook\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Missing required PayPal transmission headers (authAlgo=true, certUrl=false, transmissionId=true, transmissionSig=true, transmissionTime=true); rejecting unverified webhook\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Missing required PayPal transmission headers (authAlgo=true, certUrl=true, transmissionId=true, transmissionSig=false, transmissionTime=true); rejecting unverified webhook\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Missing or empty webhook event payload; rejecting unverified webhook\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Malformed rawBody JSON; rejecting unverified webhook\u001B[39m\napi:test: \u001B[33m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[33m   WARN\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[33m[PayPalClient] Webhook verification returned HTTP 503. DebugId: undefined\u001B[39m\napi:test: \u001B[32m[Nest] 436858  - \u001B[39m11/09/2026, 3:42:43 PM \u001B[32m    LOG\u001B[39m \u001B[38;5;3m[PayPalClient] \u001B[39m\u001B[32m[PayPalClient] Webhook verification skipped via dev-authorized skipVerification in DEMO_MODE\u001B[39m\napi:test:  \u001B[32m\u2713\u001B[39m src/payments/payment.sm.spec.ts \u001B[2m(\u001B[22m\u001B[2m35 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[32m 29\u001B[2mms\u001B[22m\u001B[39m\napi:test:  \u001B[32m\u2713\u001B[39m src/paypal/paypal.client.spec.ts \u001B[2m(\u001B[22m\u001B[2m14 te\n\u2026[truncated]",
+        "durationMs": 193,
+        "testResults": {
+          "testFramework": "vitest",
+          "runnerDetectedFrom": "output_banner",
+          "testsTotal": 0,
+          "testsPassed": 0,
+          "testsFailed": 0,
+          "testsSkipped": 0,
+          "parseFailed": true
+        }
+      },
+      {
+        "name": "command-center-smoke",
+        "kind": "playwright-route",
+        "verificationMethod": "exit-code",
+        "passed": false,
+        "timedOut": false,
+        "skipped": true,
+        "skippedReason": "The Playwright toolchain for this recorded flow is unavailable. Prepare and complete a fresh browser recording request, or use an http-probe fallback.",
+        "exitCode": null,
+        "outputSample": "",
+        "durationMs": 0
+      }
+    ],
+    "executions": [
+      {
+        "source": "setup[0]",
+        "resolvedExecutable": "/usr/bin/pnpm",
+        "args": [
+          "install",
+          "--frozen-lockfile"
+        ],
+        "cwd": "/home/nulltrace/Documents/Projects/PayPal Hackathon/PayPilot",
+        "env": {},
+        "prependPath": [],
+        "platform": "linux"
+      },
+      {
+        "source": "devServer",
+        "resolvedExecutable": "/usr/bin/pnpm",
+        "args": [
+          "dev"
+        ],
+        "cwd": "/home/nulltrace/Documents/Projects/PayPal Hackathon/PayPilot",
+        "env": {},
+        "prependPath": [],
+        "platform": "linux"
+      },
+      {
+        "source": "tsc-no-emit",
+        "resolvedExecutable": "/usr/bin/pnpm",
+        "args": [
+          "typecheck"
+        ],
+        "cwd": "/home/nulltrace/Documents/Projects/PayPal Hackathon/PayPilot",
+        "env": {},
+        "prependPath": [],
+        "platform": "linux"
+      },
+      {
+        "source": "lint-pass",
+        "resolvedExecutable": "/usr/bin/pnpm",
+        "args": [
+          "lint"
+        ],
+        "cwd": "/home/nulltrace/Documents/Projects/PayPal Hackathon/PayPilot",
+        "env": {},
+        "prependPath": [],
+        "platform": "linux"
+      },
+      {
+        "source": "tests-pass",
+        "resolvedExecutable": "/usr/bin/pnpm",
+        "args": [
+          "test"
+        ],
+        "cwd": "/home/nulltrace/Documents/Projects/PayPal Hackathon/PayPilot",
+        "env": {},
+        "prependPath": [],
+        "platform": "linux"
+      }
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DevWebhooksController } from './dev-webhooks.controller.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
@@ -38,7 +38,7 @@ describe('DevWebhooksController Security and Behavior', () => {
 
     await expect(
       controller.simulate({ eventType: 'PAYMENT.CAPTURE.COMPLETED' }),
-    ).rejects.toThrow(ForbiddenException);
+    ).rejects.toThrow(NotFoundException);
   });
 
   it('rejects simulation when DEMO_MODE is not "true" in non-production environment', async () => {
@@ -54,7 +54,7 @@ describe('DevWebhooksController Security and Behavior', () => {
 
     await expect(
       controller.simulate({ eventType: 'PAYMENT.CAPTURE.COMPLETED' }),
-    ).rejects.toThrow(ForbiddenException);
+    ).rejects.toThrow(NotFoundException);
   });
 
   it('rejects simulation when eventType is missing', async () => {
@@ -142,4 +142,3 @@ describe('DevWebhooksController Security and Behavior', () => {
     );
   });
 });
-

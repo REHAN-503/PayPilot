@@ -36,6 +36,13 @@ function PlanDetailContent() {
   const [whatIfBudget, setWhatIfBudget] = React.useState<number>(300);
   const [whatIfQuantity, setWhatIfQuantity] = React.useState<number>(1);
   const [isWhatIfRunning, setIsWhatIfRunning] = React.useState(false);
+  const [isEvaluating, setIsEvaluating] = React.useState(false);
+  const [evaluatedPolicy, setEvaluatedPolicy] = React.useState<{
+    decision: string;
+    reasons: string[];
+    violations: string[];
+  } | null>(null);
+  const [swappingProductId, setSwappingProductId] = React.useState<string | null>(null);
 
   const [syncedPlanId, setSyncedPlanId] = React.useState<string | null>(null);
   const [mountTime] = React.useState(() => Date.now());
@@ -118,6 +125,36 @@ function PlanDetailContent() {
     }
   };
 
+  const handleEvaluate = async () => {
+    try {
+      setIsEvaluating(true);
+      setEvaluatedPolicy(await api.evaluatePlan(plan.id));
+      await refetch();
+    } catch (err: unknown) {
+      toast.error('Policy re-check failed', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  const handleAlternativeSwap = async (productId: string) => {
+    try {
+      setSwappingProductId(productId);
+      await api.selectAlternative(plan.id, productId);
+      setEvaluatedPolicy(await api.evaluatePlan(plan.id));
+      await refetch();
+      toast.success('Plan alternative selected');
+    } catch (err: unknown) {
+      toast.error('Alternative swap failed', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setSwappingProductId(null);
+    }
+  };
+
   return (
     <DashboardShell>
       <div className="space-y-6">
@@ -157,6 +194,15 @@ function PlanDetailContent() {
 
           {/* Top Actions */}
           <div className="flex items-center gap-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEvaluate}
+              disabled={isEvaluating}
+            >
+              <ShieldCheck className="w-4 h-4 mr-1.5" />
+              {isEvaluating ? 'Checking...' : 'Re-check policy'}
+            </Button>
             <Link href={`/negotiation?planId=${plan.id}`}>
               <Button variant="accent" size="sm">
                 <Handshake className="w-4 h-4 mr-1.5" />
@@ -199,6 +245,30 @@ function PlanDetailContent() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
+            {evaluatedPolicy && (
+              <Card className="border-slate-800 bg-slate-900/80 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-white">Policy re-check</h3>
+                  <Badge variant={evaluatedPolicy.decision === 'BLOCK' ? 'destructive' : 'success'}>
+                    {evaluatedPolicy.decision}
+                  </Badge>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {[...evaluatedPolicy.reasons.map((reason) => ({ pass: true, text: reason })),
+                    ...evaluatedPolicy.violations.map((violation) => ({ pass: false, text: violation }))].map(
+                    (rule, index) => (
+                      <div key={`${rule.text}-${index}`} className="flex items-start gap-2">
+                        <span className={rule.pass ? 'text-emerald-400' : 'text-red-400'}>
+                          {rule.pass ? 'PASS' : 'FAIL'}
+                        </span>
+                        <span className="text-slate-300">{rule.text}</span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* Primary Recommended Product Card */}
             <Card className="border-slate-800 bg-slate-900/80 overflow-hidden shadow-xl">
               <div className="p-6 flex flex-col sm:flex-row gap-6">
@@ -257,6 +327,52 @@ function PlanDetailContent() {
                 </div>
               </div>
             </Card>
+
+            {Array.isArray(plan.alternatives) && plan.alternatives.length > 0 && (
+              <Card className="border-slate-800 bg-slate-900/60 p-5">
+                <h3 className="text-sm font-bold text-white mb-3">Alternatives</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {plan.alternatives.map((alternative, index) => {
+                    if (typeof alternative !== 'object' || alternative === null) return null;
+                    const candidate = alternative as {
+                      productId?: string;
+                      name?: string;
+                      price?: number | string;
+                      reason?: string;
+                    };
+                    if (!candidate.productId) return null;
+                    return (
+                      <div
+                        key={candidate.productId}
+                        className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-200">
+                              {candidate.name || `Alternative ${index + 1}`}
+                            </p>
+                            <p className="text-sm font-bold text-blue-400">
+                              {formatCurrency(candidate.price ?? 0)}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAlternativeSwap(candidate.productId!)}
+                            disabled={swappingProductId !== null}
+                          >
+                            {swappingProductId === candidate.productId ? 'Swapping...' : 'Swap to this'}
+                          </Button>
+                        </div>
+                        {candidate.reason && (
+                          <p className="mt-2 text-[11px] text-slate-400">{candidate.reason}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
 
             {/* Why This Pick & Tradeoffs */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -472,4 +588,3 @@ export default function PlanDetailPage() {
     </React.Suspense>
   );
 }
-

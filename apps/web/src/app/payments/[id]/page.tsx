@@ -29,6 +29,7 @@ function PaymentDetailContent() {
   const paymentId = params.id as string;
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [isSimulating, setIsSimulating] = React.useState(false);
+  const [isCancelling, setIsCancelling] = React.useState(false);
 
   const { data: payment, isLoading, refetch } = useQuery({
     queryKey: ['payment', paymentId],
@@ -65,6 +66,21 @@ function PaymentDetailContent() {
       toast.error('Simulation Failed', { description: message });
     } finally {
       setIsSimulating(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      setIsCancelling(true);
+      await api.cancelPayment(paymentId);
+      toast.success('Payment cancelled');
+      await refetch();
+    } catch (err: unknown) {
+      toast.error('Unable to cancel payment', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -138,6 +154,25 @@ function PaymentDetailContent() {
             </div>
             <div className="text-xs text-emerald-400 font-medium">USD • Intent CAPTURE</div>
           </div>
+        </div>
+
+        {payment.status !== 'CAPTURED' && payment.status !== 'CANCELLED' && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              disabled={isCancelling}
+              className="text-red-300 border-red-500/30 hover:bg-red-950/30"
+            >
+              {isCancelling ? 'Cancelling...' : 'Cancel payment'}
+            </Button>
+          </div>
+        )}
+        <div className="flex justify-end">
+          <Link href={`/receipts/${payment.id}`}>
+            <Button variant="outline" size="sm">View trust receipt</Button>
+          </Link>
         </div>
 
         {/* 2-Column Grid */}
@@ -344,4 +379,3 @@ export default function PaymentDetailPage() {
     </React.Suspense>
   );
 }
-

@@ -3,10 +3,12 @@ import {
   Get,
   MessageEvent,
   Query,
+  Res,
   Sse,
 } from '@nestjs/common';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { Observable } from 'rxjs';
+import type { Response } from 'express';
 import { TimelineService } from './timeline.service.js';
 import { TimelineEmitter, type TimelineEvent } from './timeline.emitter.js';
 
@@ -29,6 +31,22 @@ export class TimelineController {
       planId,
       paymentId,
     });
+  }
+
+  @Get('export')
+  async export(
+    @Session() session: UserSession,
+    @Query('format') format: 'csv' | 'json' = 'json',
+    @Query('planId') planId: string | undefined,
+    @Res() response: Response,
+  ) {
+    const result = await this.timelineService.getTimeline(session.user.id, { planId });
+    if (format !== 'csv') return response.json(result.events);
+    const rows = result.events.map((event) => [event.id, event.at, event.stage, event.actor, event.title, event.status, event.explanation]);
+    const csv = [['id', 'at', 'stage', 'actor', 'title', 'status', 'explanation'], ...rows]
+      .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))
+      .join('\n');
+    response.type('text/csv').setHeader('Content-Disposition', 'attachment; filename="paypilot-timeline.csv"').send(csv);
   }
 
   @Sse('stream')
@@ -54,4 +72,3 @@ export class TimelineController {
     });
   }
 }
-

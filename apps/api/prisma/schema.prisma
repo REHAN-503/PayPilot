@@ -223,6 +223,8 @@ model UserPolicy {
   allowAutoExecute     Boolean  @default(false)
   allowNegotiation     Boolean  @default(false)
   negotiationMaxRounds Int      @default(3)
+  agentPaused          Boolean  @default(false)
+  maxDiscountSeekPercent Decimal? @db.Decimal(5, 2)
 
   allowedCategories     String[] @default([])
   blockedCategories     String[] @default([])
@@ -544,6 +546,8 @@ model AgentActivity {
   description String?
 
   metadata Json?
+  prevHash String?
+  eventHash String?
 
   createdAt DateTime @default(now())
 

@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -14,12 +15,14 @@ import {
 } from '@thallesp/nestjs-better-auth';
 import { createIntentSchema } from './intent.schema.js';
 import { IntentsService } from './intents.service.js';
+import { LlmRateLimitGuard } from '../common/rate-limit.guard.js';
 
 @Controller('intents')
 export class IntentsController {
   constructor(private readonly intentsService: IntentsService) {}
 
   @Post()
+  @UseGuards(LlmRateLimitGuard)
   create(
     @Body() body: unknown,
     @Session() session: UserSession,
@@ -40,6 +43,7 @@ export class IntentsController {
   }
 
   @Post('stream')
+  @UseGuards(LlmRateLimitGuard)
   async createStream(
     @Body() body: unknown,
     @Session() session: UserSession,

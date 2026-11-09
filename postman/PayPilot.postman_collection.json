@@ -179,7 +179,23 @@
           "path": ["timeline"]
         }
       }
+    },
+    {
+      "name": "Simulate Policy",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"category\":\"Electronics\",\"amount\":50,\"merchant\":\"Demo merchant\"}" },
+        "url": { "raw": "{{baseUrl}}/policies/simulate", "host": ["{{baseUrl}}"], "path": ["policies", "simulate"] }
+      }
+    },
+    {
+      "name": "Verify Trust Receipt",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/receipts/{{paymentId}}/verify", "host": ["{{baseUrl}}"], "path": ["receipts", "{{paymentId}}", "verify"] }
+      }
     }
   ]
 }
-

@@ -9,6 +9,7 @@ All endpoints are hosted by default on `http://localhost:4000` (or through Next.
 | Method | Path | Auth Required | Description |
 |---|---|---|---|
 | `GET` | `/health` | No | System health check and server uptime. |
+| `GET` | `/health/config` | No | Non-secret LLM, PayPal, and simulator mode indicators. |
 | `POST` | `/api/auth/sign-in/email` | No | Authenticate user via email and password. |
 | `POST` | `/api/auth/sign-up/email` | No | Register new procurement user. |
 | `GET` | `/api/auth/get-session` | Yes | Retrieve current active user session. |
@@ -29,7 +30,7 @@ All endpoints are hosted by default on `http://localhost:4000` (or through Next.
 | `POST` | `/plans/:id/approve` | Yes | Authorize plan (`DRAFT` / `AWAITING_APPROVAL` $\rightarrow$ `APPROVED`). |
 | `POST` | `/plans/:id/reject` | Yes | Decline plan (`AWAITING_APPROVAL` $\rightarrow$ `REJECTED`). |
 | `POST` | `/plans/:id/what-if` | Yes | Simulate alternate budget constraints or quantity changes without mutating plan. |
-| `POST` | `/plans/:id/select-alternative` | Yes | Swap current primary product for an alternative catalog item. |
+| `PATCH` | `/plans/:id/alternative` | Yes | Swap current primary product for an alternative catalog item. |
 
 ---
 
@@ -68,11 +69,16 @@ All endpoints are hosted by default on `http://localhost:4000` (or through Next.
 | Method | Path | Auth Required | Description |
 |---|---|---|---|
 | `GET` | `/policies/me` | Yes | Get current user's deterministic spending limits and running daily/monthly spend. |
-| `PATCH` | `/policies/me` | Yes | Update spending limits, category rules, and autonomy mode. |
+| `PUT` | `/policies/me` | Yes | Update spending limits, category rules, autonomy mode, and the agent kill-switch. |
+| `POST` | `/policies/simulate` | Yes | Evaluate a hypothetical purchase without persisting it. |
+| `GET` | `/budget/summary` | Yes | Daily/monthly autonomy spend and limits. |
 | `GET` | `/timeline` | Yes | Get unified chronological timeline of all events across intents, plans, policy checks, payments, and webhooks. |
+| `GET` | `/timeline/export?format=json\|csv` | Yes | Export the current user's timeline. |
+| `GET` | `/ledger/export?format=json\|csv` | Yes | Export the current user's ledger. |
 | `GET` | `/timeline/stream` | Yes | Server-Sent Events (SSE) live stream broadcasting new timeline events in real-time. |
 | `GET` | `/analytics/summary` | Yes | Aggregate metrics (total spent, average risk score, approval rates, savings). |
 | `GET` | `/analytics/transactions` | Yes | Tabular ledger rows for AG Grid display. |
 | `GET` | `/analytics/agent-activity` | Yes | Detailed agent action log table. |
+| `GET` | `/receipts/:paymentId` | Yes | Trust receipt with policy, risk, approval, PayPal, and hash-chain evidence. |
+| `GET` | `/receipts/:paymentId/verify` | Yes | Recompute and verify the receipt activity hash-chain. |
 | `GET` | `/products` | Yes | List all available catalog products and active stock. |
-

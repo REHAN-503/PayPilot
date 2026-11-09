@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldAlert,
   SlidersHorizontal,
@@ -18,6 +18,16 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { data: policyData } = useQuery({
     queryKey: ['policy'],
     queryFn: () => api.getPolicy(),
+  });
+  const { data: configHealth } = useQuery({
+    queryKey: ['config-health'],
+    queryFn: () => api.getConfigHealth(),
+    staleTime: 30_000,
+  });
+  const queryClient = useQueryClient();
+  const pauseMutation = useMutation({
+    mutationFn: (agentPaused: boolean) => api.updatePolicy({ agentPaused }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['policy'] }),
   });
 
   const policy = policyData?.policy;
@@ -51,6 +61,30 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
 
       {/* Right Controls: Budget & Autonomy Pill */}
       <div className="flex items-center gap-3 sm:gap-4">
+        <div className="hidden lg:flex items-center gap-1.5">
+          <Badge variant="outline" className="text-[10px]">
+            LLM {configHealth?.llmMode ?? '...'}
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            PayPal {configHealth?.paypalMode ?? '...'}
+          </Badge>
+          {configHealth?.simulatorEnabled && (
+            <Badge variant="warning" className="text-[10px]">
+              Simulator
+            </Badge>
+          )}
+        </div>
+        <button
+          type="button"
+          className={`hidden md:inline-flex rounded-lg border px-2 py-1 text-[10px] ${policy?.agentPaused ? 'border-red-500/40 text-red-300' : 'border-slate-700 text-slate-400'}`}
+          onClick={() => {
+            const next = !policy?.agentPaused;
+            if (next && !window.confirm('Pause all agent approval and payment actions?')) return;
+            pauseMutation.mutate(next);
+          }}
+        >
+          {policy?.agentPaused ? 'Agent paused' : 'Pause agent'}
+        </button>
         {/* Budget Metric Ring / Pill */}
         <Link
           href="/policy"
@@ -112,4 +146,3 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
     </header>
   );
 }
-

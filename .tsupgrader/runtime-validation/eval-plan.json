@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-11-09T15:43:00.000Z",
+  "generatedOnPlatform": "linux",
+  "projectType": "webapp",
+  "devServer": {
+    "command": "pnpm",
+    "args": ["dev"],
+    "url": "http://localhost:3000",
+    "readyTimeoutSeconds": 120
+  },
+  "setup": [
+    {
+      "command": "pnpm",
+      "args": ["install", "--frozen-lockfile"],
+      "timeoutSeconds": 600
+    }
+  ],
+  "assertions": [
+    {
+      "name": "tsc-no-emit",
+      "kind": "process",
+      "command": "pnpm",
+      "args": ["typecheck"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "lint-pass",
+      "kind": "process",
+      "command": "pnpm",
+      "args": ["lint"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "tests-pass",
+      "kind": "process",
+      "command": "pnpm",
+      "args": ["test"],
+      "verificationMethod": "test-results",
+      "expected": "0",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "command-center-smoke",
+      "kind": "playwright-route",
+      "scriptPath": "apps/web/tests/smoke.spec.ts",
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    }
+  ]
+}

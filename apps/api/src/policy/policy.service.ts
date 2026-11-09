@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { z } from 'zod';
 import type { updatePolicySchema } from './policy.schema.js';
+import { evaluate } from './policy.engine.js';
 
 @Injectable()
 export class PolicyService {
@@ -50,9 +51,11 @@ export class PolicyService {
         requireApprovalAbove: 100,
         allowAutoExecute: false,
         allowNegotiation: false,
+        negotiationMaxRounds: 3,
         allowedCategories: [],
         blockedCategories: [],
         autoApproveCategories: [],
+        agentPaused: false,
       },
       update: {},
     });
@@ -87,9 +90,12 @@ export class PolicyService {
         requireApprovalAbove: data.requireApprovalAbove ?? null,
         allowAutoExecute: data.allowAutoExecute ?? false,
         allowNegotiation: data.allowNegotiation ?? false,
+        negotiationMaxRounds: data.negotiationMaxRounds ?? 3,
         allowedCategories: data.allowedCategories ?? [],
         blockedCategories: data.blockedCategories ?? [],
         autoApproveCategories: data.autoApproveCategories ?? [],
+        agentPaused: data.agentPaused ?? false,
+        maxDiscountSeekPercent: data.maxDiscountSeekPercent ?? null,
       },
       update: {
         ...(data.currency !== undefined ? { currency: data.currency } : {}),
@@ -112,6 +118,9 @@ export class PolicyService {
         ...(data.allowNegotiation !== undefined
           ? { allowNegotiation: data.allowNegotiation }
           : {}),
+        ...(data.negotiationMaxRounds !== undefined
+          ? { negotiationMaxRounds: data.negotiationMaxRounds }
+          : {}),
         ...(data.allowedCategories !== undefined
           ? { allowedCategories: data.allowedCategories }
           : {}),
@@ -121,8 +130,33 @@ export class PolicyService {
         ...(data.autoApproveCategories !== undefined
           ? { autoApproveCategories: data.autoApproveCategories }
           : {}),
+        ...(data.agentPaused !== undefined ? { agentPaused: data.agentPaused } : {}),
+        ...(data.maxDiscountSeekPercent !== undefined
+          ? { maxDiscountSeekPercent: data.maxDiscountSeekPercent }
+          : {}),
       },
     });
+  }
+
+  async simulate(userId: string, input: { category: string; amount: number; merchant: string }) {
+    const { policy, spendMetrics } = await this.getPolicy(userId);
+    const result = evaluate(
+      { total: input.amount, currency: policy.currency, category: input.category, items: [] },
+      {
+        currency: policy.currency,
+        autonomyMode: policy.autonomyMode,
+        maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
+        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+        monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
+        requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+        allowAutoExecute: policy.allowAutoExecute,
+        allowedCategories: policy.allowedCategories,
+        blockedCategories: policy.blockedCategories,
+        autoApproveCategories: policy.autoApproveCategories,
+      },
+      { today: spendMetrics.dailySpent, month: spendMetrics.monthlySpent },
+    );
+    return { ...result, merchant: input.merchant, amount: input.amount, category: input.category };
   }
 
   async getBudgetSummary(userId: string) {
@@ -146,5 +180,28 @@ export class PolicyService {
       },
     };
   }
-}
 
+  async assertAgentActive(
+    userId: string,
+    context: { planId?: string; intentId?: string; paymentId?: string },
+  ) {
+    const policy = await this.prisma.userPolicy.findUnique({ where: { userId } });
+    if (!policy?.agentPaused) return;
+    await this.prisma.agentActivity.create({
+      data: {
+        userId,
+        planId: context.planId,
+        intentId: context.intentId,
+        paymentId: context.paymentId,
+        type: 'FORBIDDEN_ACTION_BLOCKED',
+        actor: 'SYSTEM',
+        title: 'Agent kill-switch blocked action',
+        description: 'The agent is paused by the user. Approval and payment actions are disabled.',
+      },
+    });
+    throw new ForbiddenException({
+      code: 'AGENT_PAUSED',
+      message: 'Agent is paused. Resume it in Policy settings before approving or paying.',
+    });
+  }
+}

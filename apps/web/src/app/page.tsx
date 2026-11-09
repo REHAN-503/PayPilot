@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   Sparkles,
@@ -23,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { DEMO_PROMPTS, type PurchasePlan } from '../lib/schemas';
 import { api } from '../lib/api';
 import { formatCurrency } from '../lib/utils';
-import { useEventStream } from '../hooks/useEventStream';
+import { useIntentStream, type AgentActivity } from '../hooks/useIntentStream';
 import { toast } from 'sonner';
 
 export default function CommandCenterPage() {
@@ -33,6 +34,9 @@ export default function CommandCenterPage() {
   const [currentStepId, setCurrentStepId] = React.useState<string | undefined>(undefined);
   const [activePlan, setActivePlan] = React.useState<PurchasePlan | null>(null);
   const [approvalSheetOpen, setApprovalSheetOpen] = React.useState(false);
+  const [degradedMode, setDegradedMode] = React.useState(false);
+  const router = useRouter();
+  const { stream, isStreaming } = useIntentStream();
 
   // Queries
   const { data: plans, refetch: refetchPlans } = useQuery({
@@ -57,27 +61,41 @@ export default function CommandCenterPage() {
     if (status === 'running') setCurrentStepId(id);
   }, []);
 
-  // Connect to SSE stream
-  useEventStream((event) => {
-    refetchTimeline();
-    refetchPlans();
-
-    // Map incoming event to step progression
-    if (event.stage === 'INTENT') {
-      updateStepStatus('parse', 'completed', event.explanation);
-      updateStepStatus('search', 'running');
-    } else if (event.stage === 'PLAN') {
-      updateStepStatus('search', 'completed');
-      updateStepStatus('rank', 'completed', event.explanation);
-      updateStepStatus('policy', 'running');
-    } else if (event.stage === 'POLICY') {
-      updateStepStatus('policy', event.status === 'blocked' ? 'blocked' : 'completed', event.explanation);
-      if (event.status !== 'blocked') updateStepStatus('risk', 'running');
-    } else if (event.stage === 'RISK') {
-      updateStepStatus('risk', 'completed', event.explanation);
-      updateStepStatus('ready', 'completed', 'Plan ready for user authorization');
+  const applyActivity = React.useCallback((activity: AgentActivity) => {
+    const detail = activity.description || activity.title;
+    switch (activity.type) {
+      case 'INTENT_CREATED':
+      case 'INTENT_ANALYZED':
+        updateStepStatus('parse', 'completed', detail);
+        updateStepStatus('search', 'running');
+        break;
+      case 'PRODUCT_SEARCHED':
+        updateStepStatus('search', 'completed', detail);
+        updateStepStatus('rank', 'running');
+        break;
+      case 'PRODUCT_SELECTED':
+      case 'PLAN_CREATED':
+        updateStepStatus('rank', 'completed', detail);
+        updateStepStatus('policy', 'running');
+        break;
+      case 'POLICY_CHECKED':
+        updateStepStatus('policy', 'completed', detail);
+        updateStepStatus('risk', 'running');
+        break;
+      case 'POLICY_BLOCKED':
+        updateStepStatus('policy', 'blocked', detail);
+        break;
+      case 'RISK_ASSESSED':
+        updateStepStatus('risk', 'completed', detail);
+        updateStepStatus('ready', 'running');
+        break;
+      case 'APPROVAL_REQUESTED':
+      case 'APPROVAL_GRANTED':
+        updateStepStatus('ready', 'completed', detail);
+        break;
     }
-  });
+    void refetchTimeline();
+  }, [refetchTimeline, updateStepStatus]);
 
   const handlePlanSubmit = async (textToPlan = goal) => {
     if (!textToPlan.trim()) {
@@ -100,42 +118,45 @@ export default function CommandCenterPage() {
       setCurrentStepId('parse');
 
       toast.loading('Autonomous Agent executing plan...', { id: 'plan-progress' });
+      setDegradedMode(false);
 
-      // Step 1: Parsing
-      await new Promise((r) => setTimeout(r, 400));
-      updateStepStatus('parse', 'completed', 'Goal analyzed & prompt injection boundaries verified');
-      updateStepStatus('search', 'running');
-
-      // Call API
-      const res = await api.createIntent(textToPlan);
-
-      // Step 2 & 3: Catalog & Ranking
-      await new Promise((r) => setTimeout(r, 400));
-      updateStepStatus('search', 'completed', 'Matched catalog items within target category');
-      updateStepStatus('rank', 'completed', 'Ranked primary option with tradeoff analysis');
-      updateStepStatus('policy', 'running');
-
-      // Step 4: Policy
-      await new Promise((r) => setTimeout(r, 350));
-      if (res.policyEvaluation?.decision === 'BLOCK') {
-        updateStepStatus('policy', 'blocked', res.policyEvaluation.violations?.[0] || 'Budget exceeded');
-        toast.error('Policy Guard Blocked Action', {
-          id: 'plan-progress',
-          description: 'Hard deterministic limit prevented automated purchase.',
+      try {
+        await stream(textToPlan, {
+          onActivity: applyActivity,
+          onResult: (res) => {
+            if (res.policyEvaluation?.decision === 'BLOCK') {
+              updateStepStatus(
+                'policy',
+                'blocked',
+                res.policyEvaluation.violations?.[0] || 'Budget exceeded',
+              );
+              return;
+            }
+            updateStepStatus('ready', 'completed', 'Plan ready for user authorization');
+            toast.success('Procurement Plan Created!', { id: 'plan-progress' });
+            if (res.plan?.id) {
+              router.push(`/plans/${res.plan.id}`);
+            }
+          },
+          onError: () => undefined,
         });
-      } else {
-        updateStepStatus('policy', 'completed', 'All deterministic budget and autonomy rules passed');
-        updateStepStatus('risk', 'running');
-
-        // Step 5 & 6: Risk & Ready
-        await new Promise((r) => setTimeout(r, 300));
-        updateStepStatus('risk', 'completed', `Assessed ${res.riskAssessment?.level || 'LOW'} risk profile`);
-        updateStepStatus('ready', 'completed', 'Plan created. Awaiting user authorization.');
-
-        toast.success('Procurement Plan Created!', { id: 'plan-progress' });
-
-        if (res.plan) {
+      } catch {
+        setDegradedMode(true);
+        toast.info('Degraded mode', {
+          id: 'plan-progress',
+          description: 'Streaming is unavailable; using the standard planning request.',
+        });
+        const res = await api.createIntent(textToPlan);
+        if (res.policyEvaluation?.decision === 'BLOCK') {
+          updateStepStatus(
+            'policy',
+            'blocked',
+            res.policyEvaluation.violations?.[0] || 'Budget exceeded',
+          );
+        } else if (res.plan) {
+          updateStepStatus('ready', 'completed', 'Plan ready for user authorization');
           setActivePlan(res.plan);
+          router.push(`/plans/${res.plan.id}`);
         }
       }
 
@@ -211,7 +232,7 @@ export default function CommandCenterPage() {
                 variant="glow"
                 size="lg"
                 onClick={() => handlePlanSubmit(goal)}
-                disabled={isPlanning}
+                disabled={isPlanning || isStreaming}
                 className="shrink-0 h-11 px-6 font-semibold"
               >
                 {isPlanning ? (
@@ -234,6 +255,11 @@ export default function CommandCenterPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Live Agent Stepper Panel (5 cols) */}
           <div className="lg:col-span-5">
+            {degradedMode && (
+              <p className="text-[11px] text-amber-300">
+                Degraded mode: live activity streaming is unavailable.
+              </p>
+            )}
             <LiveAgentPanel steps={steps} currentStepId={currentStepId} />
           </div>
 

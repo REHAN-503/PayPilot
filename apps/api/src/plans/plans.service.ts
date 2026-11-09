@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { assertPlanTransition, type PlanStatus } from '../state-machines/plan.sm.js';
@@ -10,12 +11,14 @@ import { assertIntentTransition } from '../state-machines/intent.sm.js';
 import { evaluate, type PolicyRules, type PolicyEvaluationResult } from '../policy/policy.engine.js';
 import { assess, applyRiskGate, type RiskAssessmentResult } from '../policy/risk.gate.js';
 import { ReplanService } from '../replan/replan.service.js';
+import { PolicyService } from '../policy/policy.service.js';
 
 @Injectable()
 export class PlansService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly replanService: ReplanService,
+    @Optional() private readonly policyService?: PolicyService,
   ) {}
 
   async findAll(userId: string) {
@@ -127,6 +130,10 @@ export class PlansService {
     if (!plan) {
       throw new NotFoundException(`Purchase plan '${planId}' not found`);
     }
+    await this.policyService?.assertAgentActive(userId, {
+      planId: plan.id,
+      intentId: plan.intentId,
+    });
 
     const policy = await this.prisma.userPolicy.upsert({
       where: { userId },

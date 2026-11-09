@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -17,6 +18,7 @@ import { assertPlanTransition, type PlanStatus } from '../state-machines/plan.sm
 import { assertIntentTransition, type IntentStatus } from '../state-machines/intent.sm.js';
 import { evaluate, type PolicyRules } from '../policy/policy.engine.js';
 import { assess, applyRiskGate } from '../policy/risk.gate.js';
+import { PolicyService } from '../policy/policy.service.js';
 
 export type RecommendedNextAction =
   | 'RETRY_PAYMENT'
@@ -33,6 +35,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly paypalClient: PayPalClient,
     private readonly ledgerService: LedgerService,
+    @Optional() private readonly policyService?: PolicyService,
   ) {}
 
   /**
@@ -81,6 +84,10 @@ export class PaymentsService {
     if (!plan) {
       throw new NotFoundException(`Purchase plan '${planId}' not found`);
     }
+    await this.policyService?.assertAgentActive(userId, {
+      planId: plan.id,
+      intentId: plan.intentId,
+    });
 
     // 1. Plan status MUST be APPROVED
     if (plan.status !== 'APPROVED') {
@@ -345,6 +352,11 @@ export class PaymentsService {
     if (!payment) {
       throw new NotFoundException(`Payment record '${paymentId}' not found`);
     }
+    await this.policyService?.assertAgentActive(userId, {
+      planId: payment.planId,
+      intentId: payment.plan.intentId,
+      paymentId: payment.id,
+    });
 
     if (payment.status === 'CAPTURED') {
       return {
@@ -484,6 +496,11 @@ export class PaymentsService {
     if (!payment) {
       throw new NotFoundException(`Payment '${paymentId}' not found`);
     }
+    await this.policyService?.assertAgentActive(userId, {
+      planId: payment.planId,
+      intentId: payment.plan.intentId,
+      paymentId: payment.id,
+    });
 
     if (payment.status === 'CAPTURED') {
       throw new BadRequestException('Cannot cancel an already captured payment.');
@@ -550,4 +567,3 @@ export class PaymentsService {
     };
   }
 }
-

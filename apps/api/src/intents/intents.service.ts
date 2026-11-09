@@ -115,6 +115,9 @@ export class IntentsService {
       wasClamped = result.wasClamped;
     } catch (err) {
       if (err instanceof LlmUnavailableError) {
+        if (this.llmService.isForceLive()) {
+          throw err;
+        }
         this.logger.warn(`LLM unavailable for intent parsing, falling back to deterministic extraction: ${err.message}`);
         fallbackUsed = true;
         const sanitized = sanitizeUserPrompt(rawInput);

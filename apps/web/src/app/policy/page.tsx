@@ -44,6 +44,9 @@ export default function PolicyCenterPage() {
   const [negotiationRounds, setNegotiationRounds] = React.useState<number>(3);
   const [autoApproveCats, setAutoApproveCats] = React.useState<string[]>(['Electronics']);
   const [syncedPolicyId, setSyncedPolicyId] = React.useState<string | null>(null);
+  const [agentPaused, setAgentPaused] = React.useState(false);
+  const [simulation, setSimulation] = React.useState({ category: 'Electronics', amount: '50', merchant: 'Demo merchant' });
+  const [simulationResult, setSimulationResult] = React.useState<{ decision: string; reasons: string[] } | null>(null);
 
   if (policyData?.policy && syncedPolicyId !== (policyData.policy.id || 'loaded')) {
     setSyncedPolicyId(policyData.policy.id || 'loaded');
@@ -57,6 +60,7 @@ export default function PolicyCenterPage() {
     setAllowNegotiation(p.allowNegotiation ?? true);
     setNegotiationRounds(p.negotiationMaxRounds ?? 3);
     setAutoApproveCats(p.autoApproveCategories || ['Electronics']);
+    setAgentPaused(p.agentPaused ?? false);
   }
 
   const updateMutation = useMutation({
@@ -84,6 +88,7 @@ export default function PolicyCenterPage() {
       allowNegotiation,
       negotiationMaxRounds: negotiationRounds,
       autoApproveCategories: autoApproveCats,
+      agentPaused,
     });
   };
 
@@ -118,6 +123,35 @@ export default function PolicyCenterPage() {
               Configure deterministic limits, autonomy permissions, and autonomous negotiation rounds.
             </p>
           </div>
+
+          <Card className="border-amber-500/30 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-bold text-white">Agent kill-switch</h2>
+                <p className="text-xs text-slate-400">Pause approval and payment actions immediately.</p>
+              </div>
+              <Switch checked={agentPaused} onCheckedChange={(checked) => {
+                if (checked && !window.confirm('Pause all agent approval and payment actions?')) return;
+                setAgentPaused(checked);
+                updateMutation.mutate({ agentPaused: checked });
+              }} />
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="font-bold text-white">Test my rules</h2>
+            <p className="mb-4 text-xs text-slate-400">Simulate a purchase without creating a plan or payment.</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Input value={simulation.category} onChange={(event) => setSimulation({ ...simulation, category: event.target.value })} placeholder="Category" />
+              <Input value={simulation.amount} onChange={(event) => setSimulation({ ...simulation, amount: event.target.value })} placeholder="Amount" type="number" />
+              <Input value={simulation.merchant} onChange={(event) => setSimulation({ ...simulation, merchant: event.target.value })} placeholder="Merchant" />
+            </div>
+            <Button className="mt-3" variant="outline" onClick={async () => {
+              const result = await api.simulatePolicy({ ...simulation, amount: Number(simulation.amount) });
+              setSimulationResult({ decision: result.decision, reasons: [...result.violations, ...result.reasons] });
+            }}>Run simulation</Button>
+            {simulationResult && <div className="mt-3 text-sm text-slate-200"><strong>{simulationResult.decision}</strong>{simulationResult.reasons.length > 0 && <ul className="mt-1 list-disc pl-5 text-xs text-slate-400">{simulationResult.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}</div>}
+          </Card>
 
           <Button
             variant="glow"
@@ -373,4 +407,3 @@ export default function PolicyCenterPage() {
     </DashboardShell>
   );
 }
-

@@ -116,6 +116,8 @@ export interface UserPolicy {
   requireApprovalAbove?: string | number | null;
   allowAutoExecute: boolean;
   allowNegotiation: boolean;
+  agentPaused?: boolean;
+  maxDiscountSeekPercent?: string | number | null;
 }
 
 export interface Transaction {
@@ -139,4 +141,3 @@ export interface UserProfile {
   email: string;
   image?: string | null;
 }
-

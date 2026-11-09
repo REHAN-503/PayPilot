@@ -19,6 +19,7 @@ import { ApprovalSheet } from '../../components/plan/ApprovalSheet';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
 import { api } from '../../lib/api';
 import { formatCurrency } from '../../lib/utils';
 import type { Negotiation, PurchasePlan } from '../../lib/schemas';
@@ -33,11 +34,21 @@ function NegotiationContent() {
   const [isNegotiating, setIsNegotiating] = React.useState(false);
   const [agreedPlan, setAgreedPlan] = React.useState<PurchasePlan | null>(null);
   const [approvalSheetOpen, setApprovalSheetOpen] = React.useState(false);
+  const [targetDiscount, setTargetDiscount] = React.useState('10');
 
   const { data: plans } = useQuery({
     queryKey: ['plans'],
     queryFn: () => api.getPlans(),
   });
+
+  const { data: polledNegotiation } = useQuery({
+    queryKey: ['negotiation', negotiation?.id],
+    queryFn: () => api.getNegotiation(negotiation!.id),
+    enabled: Boolean(negotiation?.id && negotiation.status === 'IN_PROGRESS'),
+    refetchInterval: 1000,
+  });
+
+  const displayedNegotiation = polledNegotiation ?? negotiation;
 
   const effectivePlanId = selectedPlanId || planIdFromQuery || plans?.[0]?.id || '';
   const activePlan = plans?.find((p) => p.id === effectivePlanId);
@@ -55,7 +66,7 @@ function NegotiationContent() {
 
       toast.loading('Autonomous Buyer Agent initiating negotiation...', { id: 'neg-toast' });
 
-      const res = await api.startNegotiation(effectivePlanId);
+      const res = await api.startNegotiation(effectivePlanId, Number(targetDiscount));
       setNegotiation(res);
 
       if (res.status === 'AGREED') {
@@ -85,8 +96,8 @@ function NegotiationContent() {
     }
   };
 
-  const initialPrice = negotiation?.initialPrice ?? (activePlan ? Number(activePlan.total) : 289);
-  const currentPrice = negotiation?.agreedPrice ?? initialPrice;
+  const initialPrice = displayedNegotiation?.initialPrice ?? (activePlan ? Number(activePlan.total) : 289);
+  const currentPrice = displayedNegotiation?.agreedPrice ?? initialPrice;
   const savings = initialPrice - currentPrice;
   const savingsPct = initialPrice > 0 ? Math.round((savings / initialPrice) * 1000) / 10 : 0;
 
@@ -137,10 +148,26 @@ function NegotiationContent() {
                 </>
               )}
             </Button>
+            <Input
+              className="w-28"
+              type="number"
+              min="0"
+              max="50"
+              value={targetDiscount}
+              onChange={(event) => setTargetDiscount(event.target.value)}
+              aria-label="Target discount percent"
+              placeholder="Discount %"
+            />
           </div>
         </div>
 
         {/* Live Animated Price Ticker Bar */}
+        {isNegotiating && (
+          <div className="text-xs text-blue-300 flex items-center gap-2">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            Negotiation in progress — rounds are being refreshed from the server.
+          </div>
+        )}
         <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
@@ -167,7 +194,7 @@ function NegotiationContent() {
             <div className="px-3.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
               <div className="text-[10px] text-slate-400 font-semibold uppercase">Buyer Ceiling</div>
               <div className="font-bold text-blue-400 font-mono">
-                {formatCurrency(negotiation?.buyerCeiling ?? initialPrice)}
+                {formatCurrency(displayedNegotiation?.buyerCeiling ?? initialPrice)}
               </div>
             </div>
 
@@ -198,8 +225,8 @@ function NegotiationContent() {
             </div>
 
             <div className="space-y-4 flex-1">
-              {negotiation ? (
-                negotiation.rounds
+              {displayedNegotiation ? (
+                displayedNegotiation.rounds
                   .filter((r) => r.speaker === 'BUYER')
                   .map((round) => (
                     <motion.div
@@ -243,8 +270,8 @@ function NegotiationContent() {
             </div>
 
             <div className="space-y-4 flex-1">
-              {negotiation ? (
-                negotiation.rounds
+              {displayedNegotiation ? (
+                displayedNegotiation.rounds
                   .filter((r) => r.speaker === 'MERCHANT')
                   .map((round) => (
                     <motion.div
@@ -274,7 +301,7 @@ function NegotiationContent() {
         </div>
 
         {/* Final Agreement Card when Agreed */}
-        {negotiation?.status === 'AGREED' && (
+        {displayedNegotiation?.status === 'AGREED' && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -291,8 +318,8 @@ function NegotiationContent() {
                     <Badge variant="success">Finalized</Badge>
                   </h3>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    Unit price negotiated down to {formatCurrency(negotiation.agreedPrice)} over{' '}
-                    {negotiation.roundsCount} rounds (Saved {formatCurrency(savings)}). 15-minute price hold activated.
+                    Unit price negotiated down to {formatCurrency(displayedNegotiation.agreedPrice)} over{' '}
+                    {displayedNegotiation.roundsCount} rounds (Saved {formatCurrency(savings)}). 15-minute price hold activated.
                   </p>
                 </div>
               </div>
@@ -341,4 +368,3 @@ export default function NegotiationPage() {
     </React.Suspense>
   );
 }
-
