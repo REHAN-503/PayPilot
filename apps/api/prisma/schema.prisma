@@ -115,6 +115,7 @@ enum AgentActivityType {
   PAYMENT_FAILED
   WEBHOOK_RECEIVED
   BUDGET_REPLANNED
+  REPLAN_PROPOSED
   AGENT_NEGOTIATED
   POLICY_BLOCKED
   FORBIDDEN_ACTION_BLOCKED
@@ -219,6 +220,10 @@ model UserPolicy {
   requireApprovalAbove Decimal? @db.Decimal(12, 2)
   allowAutoExecute     Boolean  @default(false)
   allowNegotiation     Boolean  @default(false)
+
+  allowedCategories     String[] @default([])
+  blockedCategories     String[] @default([])
+  autoApproveCategories String[] @default([])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

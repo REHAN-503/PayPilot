@@ -12,8 +12,17 @@ import {
   rankAndPlanWithLlm,
   type CandidateProduct,
 } from '../agent/planner.js';
-import { evaluatePolicy } from '../policies/policy-engine.js';
-import { evaluateRisk } from '../risk/risk-engine.js';
+import {
+  evaluate as evaluatePolicyNew,
+  type PolicyRules,
+  type PolicyEvaluationResult as NewPolicyResult,
+} from '../policy/policy.engine.js';
+import {
+  assess as assessRiskNew,
+  applyRiskGate,
+  type RiskAssessmentResult as NewRiskResult,
+} from '../policy/risk.gate.js';
+import { ReplanService } from '../replan/replan.service.js';
 
 export type ActivityCallback = (activity: any) => void;
 
@@ -26,6 +35,7 @@ export class IntentsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly llmService: LlmService,
+    private readonly replanService: ReplanService,
   ) {
     this.demoMode = this.config.get<string>('DEMO_MODE') !== 'false';
   }
@@ -125,7 +135,10 @@ export class IntentsService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    let lastPolicyEvaluation: NewPolicyResult | null = null;
+    let wasBlocked = false;
+
+    const result = await this.prisma.$transaction(async (tx) => {
       // Helper to persist and notify activity listeners
       const emit = async (data: {
         intentId?: string;
@@ -316,44 +329,65 @@ export class IntentsService {
         },
       });
 
-      // 7. Deterministic Policy Engine evaluation (Rule 3)
-      const policyEvaluation = evaluatePolicy({
-        planAmount: planExecution.total,
-        currency: 'USD',
-        policy: {
-          autonomyMode: policy.autonomyMode,
-          currency: policy.currency,
-          maxTransactionAmount: policy.maxTransactionAmount,
-          dailySpendingLimit: policy.dailySpendingLimit,
-          monthlySpendingLimit: policy.monthlySpendingLimit,
-          requireApprovalAbove: policy.requireApprovalAbove,
-          allowAutoExecute: policy.allowAutoExecute,
+      // 7. NEW Deterministic Policy Engine evaluation (Rule 3)
+      const firstItem = planExecution.pickedProduct;
+      const category = firstItem?.category ?? parsedIntent.category ?? null;
+
+      const policyRules: PolicyRules = {
+        currency: policy.currency,
+        autonomyMode: policy.autonomyMode as any,
+        maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
+        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+        monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
+        requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+        allowAutoExecute: policy.allowAutoExecute,
+        allowedCategories: policy.allowedCategories ?? [],
+        blockedCategories: policy.blockedCategories ?? [],
+        autoApproveCategories: policy.autoApproveCategories ?? [],
+      };
+
+      const policyEvaluation: NewPolicyResult = evaluatePolicyNew(
+        {
+          total: planExecution.total,
+          currency: 'USD',
+          category,
         },
-        dailySpentSoFar: dailySpent,
-        monthlySpentSoFar: monthlySpent,
-      });
+        policyRules,
+        { today: dailySpent, month: monthlySpent },
+      );
 
-      // 8. Deterministic Risk Assessment (Rule 3)
-      const dailyCap = policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : 500;
-      const riskEvaluation = evaluateRisk({
-        planAmount: planExecution.total,
-        policyPassed: policyEvaluation.passed,
-        violationsCount: policyEvaluation.violations.length,
-        dailySpentRatio: (dailySpent + planExecution.total) / dailyCap,
-        itemCount: planExecution.quantity,
-        isFirstPurchase: dailySpent === 0 && monthlySpent === 0,
-      });
+      // 8. NEW Deterministic Risk Assessment (Rule 3)
+      const riskEvaluation: NewRiskResult = assessRiskNew(
+        {
+          total: planExecution.total,
+          category,
+          quantity: planExecution.quantity,
+          version: 1,
+        },
+        {
+          dailySpentSoFar: dailySpent,
+          dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+        },
+      );
 
-      // 9. Determine plan status
-      const isAutoApproved =
-        policyEvaluation.canAutoExecute &&
-        riskEvaluation.level !== 'CRITICAL' &&
-        riskEvaluation.level !== 'HIGH';
+      // 9. Apply risk gate on policy decision
+      const gated = applyRiskGate(policyEvaluation.decision, riskEvaluation);
 
-      const planStatus = isAutoApproved ? 'APPROVED' : 'AWAITING_APPROVAL';
-      const intentStatus = isAutoApproved ? 'APPROVED' : 'AWAITING_APPROVAL';
+      // 10. Determine plan status based on gated decision
+      const isAutoApproved = gated.decision === 'ALLOW_AUTO';
+      const isBlocked = gated.decision === 'BLOCK';
 
-      // 10. Persist PurchasePlan with alternatives and tradeoffs
+      lastPolicyEvaluation = policyEvaluation;
+      wasBlocked = isBlocked;
+
+      let planStatus: 'APPROVED' | 'AWAITING_APPROVAL' = isAutoApproved
+        ? 'APPROVED'
+        : 'AWAITING_APPROVAL';
+      const intentStatus: 'APPROVED' | 'AWAITING_APPROVAL' = isAutoApproved
+        ? 'APPROVED'
+        : 'AWAITING_APPROVAL';
+
+      // 11. Persist PurchasePlan with alternatives and tradeoffs
       const plan = await tx.purchasePlan.create({
         data: {
           userId,
@@ -392,20 +426,19 @@ export class IntentsService {
         },
       });
 
-      // 11. Persist RiskAssessment
+      // 12. Persist RiskAssessment (uses new risk gate result)
       const riskRecord = await tx.riskAssessment.create({
         data: {
           planId: plan.id,
           level: riskEvaluation.level,
           score: riskEvaluation.score,
           reasons: riskEvaluation.reasons,
-          recommendations: riskEvaluation.recommendations,
-          policyPassed: policyEvaluation.passed,
-          explanation: `Risk Score: ${riskEvaluation.score}/100 (${riskEvaluation.level}). Policy check: ${policyEvaluation.passed ? 'PASSED' : 'FLAGGED'}.`,
+          policyPassed: policyEvaluation.decision !== 'BLOCK',
+          explanation: `Risk Score: ${riskEvaluation.score}/100 (${riskEvaluation.level}). Policy: ${policyEvaluation.decision}.`,
         },
       });
 
-      // 12. Create Approval row if manual review required
+      // 13. Create Approval row if manual review required
       let approvalRecord: any = null;
       if (!isAutoApproved) {
         approvalRecord = await tx.approval.create({
@@ -427,8 +460,8 @@ export class IntentsService {
         data: { status: intentStatus },
       });
 
-      // 13. Emit Policy & Risk activities
-      if (policyEvaluation.passed) {
+      // 14. Emit Policy & Risk activities
+      if (policyEvaluation.decision !== 'BLOCK') {
         await emit({
           intentId: intent.id,
           planId: plan.id,
@@ -436,7 +469,7 @@ export class IntentsService {
           actor: 'AGENT',
           title: 'Spending policy passed',
           description: policyEvaluation.reasons.join('; ') || 'All deterministic limit checks passed.',
-          metadata: { passed: true, violations: [] },
+          metadata: { passed: true, decision: policyEvaluation.decision, violations: [] },
         });
       } else {
         await emit({
@@ -446,7 +479,7 @@ export class IntentsService {
           actor: 'AGENT',
           title: 'Spending policy violation detected',
           description: policyEvaluation.violations.join('; '),
-          metadata: { passed: false, violations: policyEvaluation.violations },
+          metadata: { passed: false, decision: 'BLOCK', violations: policyEvaluation.violations },
         });
       }
 
@@ -474,6 +507,16 @@ export class IntentsService {
           description: 'Explicit user authorization required before PayPal order can be created.',
           metadata: { approvalId: approvalRecord?.id },
         });
+      } else {
+        await emit({
+          intentId: intent.id,
+          planId: plan.id,
+          type: 'APPROVAL_GRANTED',
+          actor: 'AGENT',
+          title: 'Auto-approved within policy',
+          description: 'Plan satisfies all deterministic spending limits and autonomy conditions. Pre-authorized for execution.',
+          metadata: { autoApproved: true },
+        });
       }
 
       return {
@@ -492,6 +535,29 @@ export class IntentsService {
           : 'Purchase plan generated. Please review and authorize the plan to proceed with payment.',
       };
     });
+
+    if (wasBlocked && lastPolicyEvaluation) {
+      const replanResult = await this.replanService.autoReplan(
+        userId,
+        result.plan.id,
+        (lastPolicyEvaluation as NewPolicyResult).violations,
+        onActivity,
+      );
+
+      if (replanResult.success && replanResult.replannedPlan) {
+        return {
+          intent: result.intent,
+          plan: replanResult.replannedPlan,
+          policyEvaluation: lastPolicyEvaluation,
+          riskAssessment: replanResult.replannedPlan.riskAssessments?.[0] || result.riskAssessment,
+          alternatives: result.alternatives,
+          tradeoffs: replanResult.tradeoffs || result.tradeoffs,
+          message: 'Initial plan exceeded policy limits. Automatically re-planned with a compliant alternative.',
+        };
+      }
+    }
+
+    return result;
   }
 
   async findAll(userId: string) {

@@ -21,9 +21,18 @@ const whatIfSchema = z.object({
   quantity: z.number().int().positive().optional(),
 });
 
+const decisionNoteSchema = z.object({
+  note: z.string().optional(),
+});
+
 @Controller('plans')
 export class PlansController {
   constructor(private readonly plansService: PlansService) {}
+
+  @Get()
+  findAll(@Session() session: UserSession) {
+    return this.plansService.findAll(session.user.id);
+  }
 
   @Get(':id')
   findOne(
@@ -31,6 +40,42 @@ export class PlansController {
     @Session() session: UserSession,
   ) {
     return this.plansService.findOne(session.user.id, id);
+  }
+
+  @Post(':id/evaluate')
+  evaluate(
+    @Param('id') id: string,
+    @Session() session: UserSession,
+  ) {
+    return this.plansService.evaluatePlan(session.user.id, id);
+  }
+
+  @Post(':id/approve')
+  approve(
+    @Param('id') id: string,
+    @Session() session: UserSession,
+    @Body() body: unknown,
+  ) {
+    const parsed = decisionNoteSchema.safeParse(body ?? {});
+    return this.plansService.approvePlan(
+      session.user.id,
+      id,
+      parsed.success ? parsed.data.note : undefined,
+    );
+  }
+
+  @Post(':id/reject')
+  reject(
+    @Param('id') id: string,
+    @Session() session: UserSession,
+    @Body() body: unknown,
+  ) {
+    const parsed = decisionNoteSchema.safeParse(body ?? {});
+    return this.plansService.rejectPlan(
+      session.user.id,
+      id,
+      parsed.success ? parsed.data.note : undefined,
+    );
   }
 
   @Patch(':id/alternative')

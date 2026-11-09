@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -33,10 +34,23 @@ export class PaymentsService {
       throw new NotFoundException('Purchase plan not found');
     }
 
-    // Rule 1: Only PaymentsService may call PayPal, and only when plan.status == APPROVED
+    // Rule 1 & Requirement 7: Only PaymentsService may call PayPal, and only when plan.status == APPROVED
     if (plan.status !== 'APPROVED') {
-      throw new BadRequestException(
-        `Cannot create payment order: plan is in '${plan.status}' state. Only APPROVED plans can proceed to payment.`,
+      await this.prisma.agentActivity.create({
+        data: {
+          userId,
+          planId: plan.id,
+          intentId: plan.intentId,
+          type: 'FORBIDDEN_ACTION_BLOCKED',
+          actor: 'AGENT',
+          title: 'Payment execution blocked on non-APPROVED plan',
+          description: `Payment requested for plan in status '${plan.status}'. Payment execution is strictly forbidden unless plan is in APPROVED state.`,
+          metadata: { planStatus: plan.status },
+        },
+      });
+
+      throw new ForbiddenException(
+        `Forbidden action: cannot create payment order for plan in '${plan.status}' state. Only APPROVED plans can proceed to payment.`,
       );
     }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PaymentsService } from './payments.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { PayPalService } from './paypal.service.js';
@@ -53,7 +53,7 @@ describe('PaymentsService Gating & Security', () => {
     });
 
     await expect(service.createPaymentOrder('user-1', 'plan-1')).rejects.toThrow(
-      BadRequestException,
+      ForbiddenException,
     );
     expect(paypal.createOrder).not.toHaveBeenCalled();
   });
