@@ -39,6 +39,9 @@ describe('NegotiationService', () => {
 
     mockLlmService = {
       isDemoMode: vi.fn().mockReturnValue(true),
+      isForceLive: vi.fn().mockReturnValue(false),
+      isLiveRequired: vi.fn().mockReturnValue(false),
+      hasLiveProvider: vi.fn().mockReturnValue(false),
     };
 
     service = new NegotiationService(mockPrisma, mockTimelineEmitter, mockLlmService);

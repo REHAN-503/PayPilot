@@ -1,13 +1,13 @@
 import { Controller, Get, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PayPalClient } from './paypal/paypal.client.js';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+import { LlmService } from './agent/llm/llm.service.js';
 
 @Controller()
 export class AppController {
   constructor(
     @Optional() private readonly config?: ConfigService,
-    @Optional() private readonly paypalClient?: PayPalClient,
+    @Optional() private readonly llmService?: LlmService,
   ) {}
 
   @AllowAnonymous()
@@ -25,26 +25,19 @@ export class AppController {
   @Get('health/config')
   getConfigHealth() {
     const demoMode = this.config?.get<string>('DEMO_MODE') === 'true';
-    const forceLive = this.config?.get<string>('LLM_FORCE_LIVE') === 'true';
-    const provider = this.config?.get<string>('LLM_PROVIDER') || 'anthropic';
-    const hasLlmKey = Boolean(
-      provider === 'gemini'
-        ? this.config?.get<string>('GEMINI_API_KEY')
-        : this.config?.get<string>('ANTHROPIC_API_KEY'),
-    );
-    const simulatorFlag = this.config?.get<string>('ENABLE_WEBHOOK_SIMULATOR');
-    const simulatorEnabled =
-      (simulatorFlag === 'true' ||
-        (simulatorFlag === undefined && demoMode)) &&
-      this.config?.get<string>('NODE_ENV') !== 'production';
+    const nodeEnv = this.config?.get<string>('NODE_ENV') || 'development';
+    const llm = this.llmService?.getConfigHealth();
+    const liveRequired = this.llmService?.isLiveRequired() ?? (!demoMode || this.config?.get<string>('LLM_FORCE_LIVE') === 'true');
+    const llmConfigured = llm?.llmConfigured ?? this.llmService?.hasLiveProvider() ?? false;
 
     return {
-      llmMode: !forceLive && demoMode ? 'fixture' : 'live',
-      paypalMode: this.paypalClient?.hasValidCredentials() || !demoMode
-        ? 'sandbox-live'
-        : 'mock',
-      simulatorEnabled,
-      llmConfigured: hasLlmKey,
+      llmMode: llm?.llmMode ?? (!liveRequired ? 'fixture' : 'live'),
+      llmProvider: llm?.llmProvider ?? (this.config?.get<string>('LLM_PROVIDER') || 'anthropic'),
+      llmModel: llm?.llmModel ?? (this.config?.get<string>('LLM_MODEL') || ''),
+      llmConfigured,
+      paypalMode: demoMode ? 'mock' : 'sandbox',
+      simulatorEnabled: false,
+      environment: nodeEnv,
     } as const;
   }
 }

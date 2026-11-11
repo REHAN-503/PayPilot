@@ -86,7 +86,11 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
           {theme === 'day' ? 'Night desk' : 'Day desk'}
         </button>
         <div className="hidden lg:flex items-center gap-1.5">
-          <Badge variant="outline" className="text-[10px]">
+          <Badge
+            variant={configHealth?.llmMode === 'live+fallback' ? 'warning' : 'outline'}
+            className="text-[10px]"
+            title={configHealth?.llmModel ? `${configHealth.llmProvider ?? 'llm'} / ${configHealth.llmModel}` : undefined}
+          >
             LLM {configHealth?.llmMode ?? '...'}
           </Badge>
           <Badge variant="outline" className="text-[10px]">

@@ -1,14 +1,10 @@
 import { ConfigService } from '@nestjs/config';
 import { describe, expect, it } from 'vitest';
 import { AppController } from './app.controller.js';
-import type { PayPalClient } from './paypal/paypal.client.js';
 
 function controller(values: Record<string, string>) {
   const config = new ConfigService(values);
-  const paypal = {
-    hasValidCredentials: () => values.PAYPAL_CLIENT_ID === 'valid',
-  } as unknown as PayPalClient;
-  return new AppController(config, paypal);
+  return new AppController(config);
 }
 
 describe('runtime configuration modes', () => {
@@ -16,27 +12,31 @@ describe('runtime configuration modes', () => {
     expect(controller({ DEMO_MODE: 'true' }).getConfigHealth()).toMatchObject({
       llmMode: 'fixture',
       paypalMode: 'mock',
+      simulatorEnabled: false,
     });
   });
 
   it('forces live LLM while retaining mock PayPal without credentials', () => {
     expect(
       controller({ DEMO_MODE: 'true', LLM_FORCE_LIVE: 'true' }).getConfigHealth(),
-    ).toMatchObject({ llmMode: 'live', paypalMode: 'mock' });
+    ).toMatchObject({ llmMode: 'live', paypalMode: 'mock', simulatorEnabled: false });
   });
 
-  it('uses live PayPal mode whenever credentials are valid', () => {
-    expect(
-      controller({ DEMO_MODE: 'true', PAYPAL_CLIENT_ID: 'valid' }).getConfigHealth(),
-    ).toMatchObject({ paypalMode: 'sandbox-live' });
+  it('does not expose credential presence or simulator state publicly', () => {
+    const result = controller({
+      DEMO_MODE: 'true',
+      PAYPAL_CLIENT_ID: 'valid',
+      ENABLE_WEBHOOK_SIMULATOR: 'true',
+    }).getConfigHealth();
+    expect(result.simulatorEnabled).toBe(false);
+    expect(result.paypalMode).not.toBe('sandbox-live');
   });
 
-  it('keeps the simulator independent from fixture mode', () => {
-    expect(
-      controller({ DEMO_MODE: 'false', ENABLE_WEBHOOK_SIMULATOR: 'true' }).getConfigHealth(),
-    ).toMatchObject({ llmMode: 'live', simulatorEnabled: true });
-    expect(
-      controller({ DEMO_MODE: 'true', ENABLE_WEBHOOK_SIMULATOR: 'false' }).getConfigHealth(),
-    ).toMatchObject({ llmMode: 'fixture', simulatorEnabled: false });
+  it('reports environment', () => {
+    const result = controller({
+      DEMO_MODE: 'true',
+      NODE_ENV: 'production',
+    }).getConfigHealth();
+    expect(result.environment).toBe('production');
   });
 });

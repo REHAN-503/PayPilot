@@ -303,6 +303,8 @@ export class TimelineService {
       case 'AGENT_NEGOTIATED':
       case 'NEGOTIATION_ROUND':
         return 'NEGOTIATION';
+      case 'SYSTEM_EVENT':
+        return 'RECOVERY';
       case 'FORBIDDEN_ACTION_BLOCKED':
         return 'RECOVERY';
       default:
@@ -319,6 +321,8 @@ export class TimelineService {
         return 'blocked';
       case 'BUDGET_REPLANNED':
       case 'REPLAN_PROPOSED':
+        return 'warn';
+      case 'SYSTEM_EVENT':
         return 'warn';
       case 'APPROVAL_REQUESTED':
         return 'pending';

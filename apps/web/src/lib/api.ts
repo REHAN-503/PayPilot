@@ -149,10 +149,13 @@ export const api = {
 
   getConfigHealth: () =>
     request<{
-      llmMode: 'fixture' | 'live';
-      paypalMode: 'sandbox-live' | 'mock';
+      llmMode: 'fixture' | 'live' | 'live+fallback';
+      llmProvider?: string;
+      llmModel?: string;
+      llmConfigured?: boolean;
+      paypalMode: 'sandbox' | 'mock';
       simulatorEnabled: boolean;
-      llmConfigured: boolean;
+      environment?: string;
     }>('/api/health/config', { method: 'GET' }),
 
   approvePlan: (id: string, note?: string) =>
@@ -222,9 +225,33 @@ export const api = {
       method: 'GET',
     });
   },
-  exportLedger: (format: 'csv' | 'json') => `/api/ledger/export?format=${format}`,
-  exportTimeline: (format: 'csv' | 'json', planId?: string) =>
-    `/api/timeline/export?format=${format}${planId ? `&planId=${planId}` : ''}`,
+  exportLedger: async (format: 'csv' | 'json') => {
+    const res = await fetch(`/api/ledger/export?format=${format}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new ApiError(res.status, 'Ledger export failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `paypilot-ledger.${format}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  exportTimeline: async (format: 'csv' | 'json', planId?: string) => {
+    const qs = planId ? `?planId=${planId}` : '';
+    const res = await fetch(`/api/timeline/export?format=${format}${qs}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new ApiError(res.status, 'Timeline export failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `paypilot-timeline.${format}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 
   // Policy
   getPolicy: () =>

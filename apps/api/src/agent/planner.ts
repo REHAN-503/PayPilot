@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { LlmService } from './llm/llm.service.js';
+import { LlmService, type LlmCallMeta } from './llm/llm.service.js';
 import { HallucinatedProductIdError } from './llm/llm-errors.js';
 import type { ParsedIntent } from './intent-parser.js';
+import { toCents, fromCents } from '../common/money.js';
 
 export interface CandidateProduct {
   id: string;
@@ -46,6 +47,7 @@ export interface VerifiedPlanExecution {
   shipping: number;
   discount: number;
   total: number;
+  llm: LlmCallMeta | null;
 }
 
 export const PLANNER_SYSTEM_PROMPT = `You are PayPilot's intelligent product planner and ranking engine.
@@ -59,10 +61,6 @@ CRITICAL SECURITY AND ACCURACY RULES:
 3. Financial totals and prices are strictly recomputed server-side from authoritative database rows. Do not attempt to calculate or adjust final pricing.
 4. If candidate products exceed the user's requested budget, explain the over-budget trade-off in the "tradeoffs" array.`;
 
-/**
- * Pure validation function: resolves a productId or SKU against candidate products.
- * Throws HallucinatedProductIdError if the ID/SKU is not in the candidate list.
- */
 export function resolveAndVerifyProductId(
   idOrSku: string | undefined,
   candidates: CandidateProduct[],
@@ -71,11 +69,9 @@ export function resolveAndVerifyProductId(
     throw new HallucinatedProductIdError('LLM response did not specify a picked product ID or SKU');
   }
 
-  // 1. Direct ID match
   const byId = candidates.find((c) => c.id === idOrSku);
   if (byId) return byId;
 
-  // 2. SKU match (fixtures or LLM referencing SKU)
   const bySku = candidates.find((c) => c.sku.toLowerCase() === idOrSku.toLowerCase());
   if (bySku) return bySku;
 
@@ -112,37 +108,31 @@ ${JSON.stringify(candidateSummary, null, 2)}
 
 Select the primary product and 2 alternatives from the candidate products above.`;
 
-  const ranking = await llmService.generateJson(
+  const llmResult = await llmService.generateJsonWithMeta(
     PlanRankingSchema,
     PLANNER_SYSTEM_PROMPT,
     userPrompt,
     'planRanking',
   );
+  const ranking = llmResult.data;
 
-  // Server-side verification: resolve picked product (rejects hallucinated IDs)
   const targetIdOrSku = ranking.pickedProductId || ranking.pickedProductSku || candidates[0].id;
   const pickedProduct = resolveAndVerifyProductId(targetIdOrSku, candidates);
 
-  // Resolve alternatives, filtering out invalid or hallucinated IDs
   const resolvedAlternatives: Array<{ product: CandidateProduct; reason: string }> = [];
   for (const alt of ranking.alternatives) {
     const altIdentifier = alt.productId || alt.productSku;
-    if (altIdentifier) {
-      try {
-        const altProd = resolveAndVerifyProductId(altIdentifier, candidates);
-        if (altProd.id !== pickedProduct.id && !resolvedAlternatives.some((a) => a.product.id === altProd.id)) {
-          resolvedAlternatives.push({
-            product: altProd,
-            reason: alt.reason,
-          });
-        }
-      } catch {
-        // Skip hallucinated alternative
+    if (!altIdentifier) continue;
+    try {
+      const altProd = resolveAndVerifyProductId(altIdentifier, candidates);
+      if (altProd.id !== pickedProduct.id && !resolvedAlternatives.some((a) => a.product.id === altProd.id)) {
+        resolvedAlternatives.push({ product: altProd, reason: alt.reason });
       }
+    } catch {
+      // skip hallucinated alternative
     }
   }
 
-  // Ensure at least up to 2 alternatives from candidates if available
   if (resolvedAlternatives.length < 2) {
     for (const cand of candidates) {
       if (cand.id !== pickedProduct.id && !resolvedAlternatives.some((a) => a.product.id === cand.id)) {
@@ -155,27 +145,27 @@ Select the primary product and 2 alternatives from the candidate products above.
     }
   }
 
-  // RECOMPUTE TOTALS STRICTLY FROM DATABASE (Rule 2)
-  const unitPrice = Number(pickedProduct.price.toString());
+  const unitPriceCents = toCents(pickedProduct.price.toString());
   const quantity = intent.quantity > 0 ? intent.quantity : 1;
-  const subtotal = Math.round(unitPrice * quantity * 100) / 100;
-  const tax = 0;
-  const shipping = 0;
-  const discount = 0;
-  const total = Math.round((subtotal + tax + shipping - discount) * 100) / 100;
+  const subtotalCents = unitPriceCents * quantity;
+  const taxCents = 0;
+  const shippingCents = 0;
+  const discountCents = 0;
+  const totalCents = subtotalCents + taxCents + shippingCents - discountCents;
 
   return {
     pickedProduct,
     alternatives: resolvedAlternatives,
     reasoning: ranking.reasoning,
     tradeoffs: ranking.tradeoffs,
-    unitPrice,
+    unitPrice: Number(fromCents(unitPriceCents)),
     quantity,
-    subtotal,
-    tax,
-    shipping,
-    discount,
-    total,
+    subtotal: Number(fromCents(subtotalCents)),
+    tax: Number(fromCents(taxCents)),
+    shipping: Number(fromCents(shippingCents)),
+    discount: Number(fromCents(discountCents)),
+    total: Number(fromCents(totalCents)),
+    llm: llmResult.meta,
   };
 }
 

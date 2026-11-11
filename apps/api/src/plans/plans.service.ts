@@ -12,6 +12,7 @@ import { evaluate, type PolicyRules, type PolicyEvaluationResult } from '../poli
 import { assess, applyRiskGate, type RiskAssessmentResult } from '../policy/risk.gate.js';
 import { ReplanService } from '../replan/replan.service.js';
 import { PolicyService } from '../policy/policy.service.js';
+import { toCents, fromCents, sumCents } from '../common/money.js';
 
 @Injectable()
 export class PlansService {
@@ -22,15 +23,17 @@ export class PlansService {
   ) {}
 
   async findAll(userId: string) {
-    return this.prisma.purchasePlan.findMany({
+    const plans = await this.prisma.purchasePlan.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       include: {
         items: { include: { product: true } },
         riskAssessments: { orderBy: { createdAt: 'desc' }, take: 1 },
         approvals: { orderBy: { createdAt: 'desc' }, take: 1 },
+        activities: { orderBy: { createdAt: 'asc' } },
       },
     });
+    return plans.map((p) => this.attachAiMeta(p));
   }
 
   async findOne(userId: string, id: string) {
@@ -56,7 +59,39 @@ export class PlansService {
       throw new NotFoundException(`Purchase plan '${id}' not found`);
     }
 
-    return plan;
+    return this.attachAiMeta(plan);
+  }
+
+  private attachAiMeta<T extends { explanation?: string | null; activities?: any[]; intent?: { activities?: any[] } | null }>(plan: T): T & { ai: any } {
+    const acts = [
+      ...(plan.activities ?? []),
+      ...(plan.intent?.activities ?? []),
+    ];
+    const intentActs = acts.filter((a) => a?.type === 'INTENT_ANALYZED' && a?.metadata?.llm);
+    const planActs = acts.filter((a) => a?.type === 'PRODUCT_SELECTED' && (a?.metadata?.llm || a?.metadata?.reasoning));
+    const fallbackActs = acts.filter((a) => a?.type === 'SYSTEM_EVENT' && (a?.title === 'llm.fallback' || a?.metadata?.event === 'llm.fallback'));
+    const intentLlm = intentActs.at(-1)?.metadata?.llm;
+    const planAct = planActs.at(-1);
+    const planLlm = planAct?.metadata?.llm;
+    const reasoning = planAct?.metadata?.reasoning ?? plan.explanation ?? null;
+    const fallback = fallbackActs.at(-1);
+    const fallbackUsed = Boolean(intentLlm?.fallbackUsed || planLlm?.fallbackUsed || fallback);
+    const mode = planLlm?.mode ?? intentLlm?.mode ?? (fallbackUsed ? 'live+fallback' : (intentLlm || planLlm ? 'live' : 'fixture'));
+    const ai = {
+      reasoning,
+      provider: planLlm?.provider ?? intentLlm?.provider ?? fallback?.metadata?.provider ?? null,
+      model: planLlm?.model ?? intentLlm?.model ?? fallback?.metadata?.model ?? null,
+      mode,
+      fallbackUsed,
+      fallbackReason: planLlm?.fallbackReason ?? intentLlm?.fallbackReason ?? fallback?.metadata?.reason ?? null,
+      latencyMs:
+        typeof planLlm?.latencyMs === 'number' || typeof intentLlm?.latencyMs === 'number'
+          ? (intentLlm?.latencyMs ?? 0) + (planLlm?.latencyMs ?? 0)
+          : null,
+      intentLatencyMs: intentLlm?.latencyMs ?? null,
+      planLatencyMs: planLlm?.latencyMs ?? null,
+    };
+    return { ...(plan as any), ai };
   }
 
   async getHistoricalMetrics(userId: string) {
@@ -84,11 +119,11 @@ export class PlansService {
       }),
     ]);
 
-    const dailySpent = dailyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const monthlySpent = monthlyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const dailySpentCents = sumCents(...dailyTx.map((tx) => tx.amount));
+    const monthlySpentCents = sumCents(...monthlyTx.map((tx) => tx.amount));
     const pastPaymentsCount = allTx.length;
-    const totalSpentAllTime = allTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const typicalSpendAverage = pastPaymentsCount > 0 ? totalSpentAllTime / pastPaymentsCount : 0;
+    const totalSpentAllTimeCents = sumCents(...allTx.map((tx) => tx.amount));
+    const typicalSpendAverageCents = pastPaymentsCount > 0 ? Math.round(totalSpentAllTimeCents / pastPaymentsCount) : 0;
 
     const purchasedCategories: string[] = [];
     for (const tx of allTx) {
@@ -101,10 +136,10 @@ export class PlansService {
     }
 
     return {
-      dailySpent,
-      monthlySpent,
+      dailySpent: dailySpentCents,
+      monthlySpent: monthlySpentCents,
       pastPaymentsCount,
-      typicalSpendAverage,
+      typicalSpendAverage: typicalSpendAverageCents,
       purchasedCategories,
       recentPaymentsIn10Min: recentTx.length,
     };
@@ -147,10 +182,10 @@ export class PlansService {
     const policyRules: PolicyRules = {
       currency: policy.currency,
       autonomyMode: policy.autonomyMode as any,
-      maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
-      dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
-      monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
-      requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+      maxTransactionAmount: policy.maxTransactionAmount,
+      dailySpendingLimit: policy.dailySpendingLimit,
+      monthlySpendingLimit: policy.monthlySpendingLimit,
+      requireApprovalAbove: policy.requireApprovalAbove,
       allowAutoExecute: policy.allowAutoExecute,
       allowedCategories: policy.allowedCategories,
       blockedCategories: policy.blockedCategories,
@@ -160,14 +195,14 @@ export class PlansService {
     const firstItem = plan.items[0];
     const category = firstItem?.product?.category ?? plan.intent?.category ?? null;
 
-    // Check catalog price at creation vs current
-    const catalogPriceAtCreation = firstItem ? Number(firstItem.unitPrice) : null;
-    const currentCatalogPrice = firstItem?.product ? Number(firstItem.product.price) : catalogPriceAtCreation;
+    // Check catalog price at creation vs current (kept as Decimal strings for precision)
+    const catalogPriceAtCreation = firstItem ? firstItem.unitPrice : null;
+    const currentCatalogPrice = firstItem?.product?.price ?? catalogPriceAtCreation;
 
     // 1. Policy Evaluation
     const policyResult: PolicyEvaluationResult = evaluate(
       {
-        total: Number(plan.total),
+        total: plan.total,
         currency: plan.currency,
         category,
         expiresAt: plan.expiresAt,
@@ -177,7 +212,7 @@ export class PlansService {
             ? {
                 stock: i.product.stock,
                 status: i.product.status,
-                price: Number(i.product.price),
+                price: i.product.price,
               }
             : null,
         })),
@@ -190,7 +225,7 @@ export class PlansService {
     // 2. Risk Evaluation
     const riskResult: RiskAssessmentResult = assess(
       {
-        total: Number(plan.total),
+        total: plan.total,
         category,
         quantity: firstItem?.quantity || 1,
         catalogPriceAtCreation,
@@ -202,7 +237,7 @@ export class PlansService {
         typicalSpendAverage: metrics.typicalSpendAverage,
         pastPaymentsCount: metrics.pastPaymentsCount,
         dailySpentSoFar: metrics.dailySpent,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+        dailySpendingLimit: policy.dailySpendingLimit,
         purchasedCategories: metrics.purchasedCategories,
         recentPaymentsIn10Min: metrics.recentPaymentsIn10Min,
       },
@@ -429,10 +464,12 @@ export class PlansService {
       throw new NotFoundException('Selected alternative product not found or inactive');
     }
 
-    const unitPrice = Number(newProduct.price);
+    const unitPriceCents = toCents(newProduct.price);
     const quantity = plan.items[0]?.quantity || 1;
-    const subtotal = Math.round(unitPrice * quantity * 100) / 100;
-    const total = subtotal;
+    const subtotalCents = unitPriceCents * quantity;
+    const totalCents = subtotalCents;
+    const subtotal = fromCents(subtotalCents);
+    const total = fromCents(totalCents);
 
     return this.prisma.$transaction(async (tx) => {
       await tx.planItem.deleteMany({ where: { planId } });
@@ -442,9 +479,9 @@ export class PlansService {
           productId: newProduct.id,
           productName: newProduct.name,
           productSku: newProduct.sku,
-          unitPrice: unitPrice.toFixed(2),
+          unitPrice: fromCents(unitPriceCents),
           quantity,
-          lineTotal: total.toFixed(2),
+          lineTotal: total,
           currency: 'USD',
         },
       });
@@ -452,12 +489,39 @@ export class PlansService {
       const updatedPlan = await tx.purchasePlan.update({
         where: { id: planId },
         data: {
-          subtotal: subtotal.toFixed(2),
-          total: total.toFixed(2),
+          subtotal: subtotal,
+          total: total,
           explanation: `Revised selection: ${newProduct.name} swapped by user.`,
         },
         include: { items: true },
       });
+
+      // FB-3: Re-evaluate policy and risk after alternative selection
+      const evalResult = await this.evaluatePlan(userId, planId);
+      if (evalResult.decision === 'BLOCK') {
+        await tx.purchasePlan.update({
+          where: { id: planId },
+          data: { status: 'REJECTED' },
+        });
+        await tx.agentActivity.create({
+          data: {
+            userId,
+            intentId: plan.intentId,
+            planId,
+            type: 'POLICY_BLOCKED',
+            actor: 'AGENT',
+            title: 'Alternative selection blocked by policy',
+            description: evalResult.violations.join('; ') || 'Selected alternative violates spending policy.',
+            metadata: { violations: evalResult.violations, productId: newProduct.id },
+          },
+        });
+        return {
+          ...updatedPlan,
+          status: 'REJECTED',
+          policyEvaluation: evalResult,
+          blocked: true,
+        };
+      }
 
       await tx.agentActivity.create({
         data: {
@@ -467,11 +531,15 @@ export class PlansService {
           type: 'PLAN_REVISED',
           actor: 'AGENT',
           title: 'Plan alternative selected',
-          description: `User selected alternative product: ${newProduct.name} ($${unitPrice.toFixed(2)}).`,
+          description: `User selected alternative product: ${newProduct.name} (${fromCents(unitPriceCents)}).`,
         },
       });
 
-      return updatedPlan;
+      return {
+        ...updatedPlan,
+        policyEvaluation: evalResult,
+        blocked: false,
+      };
     });
   }
 
@@ -521,11 +589,14 @@ export class PlansService {
       throw new NotFoundException('No active product found for simulation');
     }
 
-    const unitPrice = Number(selectedProduct.price);
-    const subtotal = Math.round(unitPrice * simulatedQuantity * 100) / 100;
-    const total = subtotal;
+    const unitPriceCents = toCents(selectedProduct.price);
+    const subtotalCents = unitPriceCents * simulatedQuantity;
+    const totalCents = subtotalCents;
+    const subtotal = fromCents(subtotalCents);
+    const total = fromCents(totalCents);
 
     if (!commit) {
+      const planTotalCents = toCents(plan.total);
       return {
         committed: false,
         simulatedPlan: {
@@ -536,7 +607,7 @@ export class PlansService {
             id: selectedProduct.id,
             sku: selectedProduct.sku,
             name: selectedProduct.name,
-            price: unitPrice,
+            price: Number(selectedProduct.price),
           },
           quantity: simulatedQuantity,
           subtotal,
@@ -544,7 +615,7 @@ export class PlansService {
           currency: 'USD',
         },
         diff: {
-          costDifference: Math.round((total - Number(plan.total)) * 100) / 100,
+          costDifference: (totalCents - planTotalCents) / 100,
           quantityDifference: simulatedQuantity - currentItem.quantity,
           simulatedBudgetCeiling: params.maxBudget ?? null,
         },
@@ -560,8 +631,8 @@ export class PlansService {
           intentId: plan.intentId,
           version: nextVersion,
           status: 'AWAITING_APPROVAL',
-          subtotal: subtotal.toFixed(2),
-          total: total.toFixed(2),
+          subtotal,
+          total,
           currency: 'USD',
           explanation: `Re-planned (v${nextVersion}): simulated budget ${params.maxBudget != null ? `$${params.maxBudget}` : 'N/A'}, quantity ${simulatedQuantity}.`,
           items: {
@@ -569,15 +640,65 @@ export class PlansService {
               productId: selectedProduct.id,
               productName: selectedProduct.name,
               productSku: selectedProduct.sku,
-              unitPrice: unitPrice.toFixed(2),
+              unitPrice: fromCents(unitPriceCents),
               quantity: simulatedQuantity,
-              lineTotal: total.toFixed(2),
+              lineTotal: total,
               currency: 'USD',
             },
           },
         },
         include: { items: true },
       });
+
+      // FB-4: Re-evaluate policy and risk on committed what-if
+      const evalResult = await this.evaluatePlan(userId, newPlan.id);
+      if (evalResult.decision === 'BLOCK') {
+        await tx.purchasePlan.update({
+          where: { id: newPlan.id },
+          data: { status: 'REJECTED' },
+        });
+        await tx.agentActivity.create({
+          data: {
+            userId,
+            intentId: plan.intentId,
+            planId: newPlan.id,
+            type: 'POLICY_BLOCKED',
+            actor: 'AGENT',
+            title: 'What-if commit blocked by policy',
+            description: evalResult.violations.join('; ') || 'Committed what-if scenario violates spending policy.',
+            metadata: { violations: evalResult.violations, previousVersion: plan.version, nextVersion },
+          },
+        });
+        return {
+          committed: true,
+          plan: { ...newPlan, status: 'REJECTED' },
+          policyEvaluation: evalResult,
+          blocked: true,
+        };
+      }
+
+      // Create risk assessment record
+      await tx.riskAssessment.create({
+        data: {
+          planId: newPlan.id,
+          level: evalResult.risk.level,
+          score: evalResult.risk.score,
+          reasons: evalResult.risk.reasons,
+          policyPassed: (evalResult.decision as string) !== 'BLOCK',
+          explanation: `Risk Score: ${evalResult.risk.score}/100 (${evalResult.risk.level}). Policy: ${evalResult.decision}.`,
+        },
+      });
+
+      if (evalResult.decision !== 'ALLOW_AUTO') {
+        await tx.approval.create({
+          data: {
+            userId,
+            planId: newPlan.id,
+            status: 'PENDING',
+            decisionNote: evalResult.reasons[0] || evalResult.violations[0] || 'Awaiting explicit user authorization.',
+          },
+        });
+      }
 
       await tx.agentActivity.create({
         data: {
@@ -587,19 +708,21 @@ export class PlansService {
           type: 'BUDGET_REPLANNED',
           actor: 'AGENT',
           title: `Purchase plan re-planned to v${nextVersion}`,
-          description: `Committed what-if scenario: total $${total.toFixed(2)}, quantity ${simulatedQuantity}.`,
+          description: `Committed what-if scenario: total ${total}, quantity ${simulatedQuantity}.`,
           metadata: {
             previousVersion: plan.version,
             nextVersion,
             simulatedBudget: params.maxBudget,
             quantity: simulatedQuantity,
+            decision: evalResult.decision,
           },
         },
       });
 
       return {
         committed: true,
-        plan: newPlan,
+        plan: { ...newPlan, policyEvaluation: evalResult },
+        blocked: false,
       };
     });
   }

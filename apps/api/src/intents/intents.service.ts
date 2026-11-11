@@ -23,6 +23,7 @@ import {
   type RiskAssessmentResult as NewRiskResult,
 } from '../policy/risk.gate.js';
 import { ReplanService } from '../replan/replan.service.js';
+import { toCents, sumCents } from '../common/money.js';
 
 export type ActivityCallback = (activity: any) => void;
 
@@ -64,16 +65,10 @@ export class IntentsService {
       }),
     ]);
 
-    const dailySpent = dailyTransactions.reduce(
-      (sum, tx) => sum + Number(tx.amount),
-      0,
-    );
-    const monthlySpent = monthlyTransactions.reduce(
-      (sum, tx) => sum + Number(tx.amount),
-      0,
-    );
+    const dailySpentCents = sumCents(...dailyTransactions.map((tx) => tx.amount));
+    const monthlySpentCents = sumCents(...monthlyTransactions.map((tx) => tx.amount));
 
-    return { dailySpent, monthlySpent };
+    return { dailySpent: dailySpentCents, monthlySpent: monthlySpentCents };
   }
 
   async create(userId: string, rawInput: string, onActivity?: ActivityCallback) {
@@ -106,32 +101,53 @@ export class IntentsService {
 
     // 2. Parse intent via LLM (with fallback to regex parser on LlmUnavailableError)
     let parsedIntent: ParsedIntent;
+    let intentLlm: any = null;
     let fallbackUsed = false;
+    let fallbackReason: string | undefined;
     let wasClamped = false;
 
     try {
       const result = await parseIntentWithLlm(this.llmService, rawInput, policyCeiling);
       parsedIntent = result.intent;
       wasClamped = result.wasClamped;
+      intentLlm = result.llm;
+      fallbackUsed = result.fallbackUsed || result.llm?.fallbackUsed === true;
+      fallbackReason = result.fallbackReason || result.llm?.fallbackReason;
     } catch (err) {
       if (err instanceof LlmUnavailableError) {
-        if (this.llmService.isForceLive()) {
+        if (this.llmService.isForceLive() || this.llmService.isLiveRequired()) {
           throw err;
         }
-        this.logger.warn(`LLM unavailable for intent parsing, falling back to deterministic extraction: ${err.message}`);
+        this.logger.warn(`LLM unavailable for intent parsing, using deterministic fallback: ${err.message}`);
         fallbackUsed = true;
+        fallbackReason = err.message;
         const sanitized = sanitizeUserPrompt(rawInput);
+        const budgetMatch = sanitized.match(/\$?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/);
+        const extractedBudget = budgetMatch ? Number(budgetMatch[1].replace(/,/g, '')) : null;
+        const maxBudget = extractedBudget != null
+          ? Math.min(extractedBudget, policyCeiling ?? Infinity)
+          : policyCeiling ?? null;
+
         parsedIntent = {
           goal: sanitized,
           category: 'Electronics',
           minBudget: null,
-          maxBudget: policyCeiling ?? null,
+          maxBudget,
           mustHave: [],
           niceToHave: [],
           useCase: sanitized,
           urgency: 'NORMAL',
           quantity: 1,
           riskNotes: isAdversarial ? ['Adversarial patterns flagged by fallback parser.'] : [],
+        };
+        intentLlm = {
+          provider: 'fixture',
+          model: this.llmService.getModelName(),
+          latencyMs: 0,
+          mode: 'live+fallback',
+          fallbackUsed: true,
+          fallbackReason,
+          attempts: 0,
         };
       } else {
         throw err;
@@ -140,6 +156,7 @@ export class IntentsService {
 
     let lastPolicyEvaluation: NewPolicyResult | null = null;
     let wasBlocked = false;
+    let planLlm: any = null;
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Helper to persist and notify activity listeners
@@ -205,14 +222,23 @@ export class IntentsService {
         metadata: { rawInput },
       });
 
-      if (fallbackUsed) {
+      if (fallbackUsed || intentLlm?.fallbackUsed) {
         await emit({
           intentId: intent.id,
           type: 'SYSTEM_EVENT',
-          actor: 'AGENT',
-          title: 'Parser fallback activated',
-          description: 'LLM service was unavailable; safely parsed intent using deterministic fallback rules.',
-          metadata: { fallback: true },
+          actor: 'SYSTEM',
+          title: 'llm.fallback',
+          description: 'LLM output fell back to deterministic parsing after provider failure or unavailability.',
+          metadata: {
+            event: 'llm.fallback',
+            stage: 'intent',
+            reason: fallbackReason || intentLlm?.fallbackReason || 'LLM unavailable',
+            provider: intentLlm?.provider ?? 'fixture',
+            model: intentLlm?.model ?? this.llmService.getModelName(),
+            latencyMs: intentLlm?.latencyMs ?? null,
+            attempts: intentLlm?.attempts ?? 0,
+            mode: intentLlm?.mode ?? 'live+fallback',
+          },
         });
       }
 
@@ -228,6 +254,7 @@ export class IntentsService {
           mustHave: parsedIntent.mustHave,
           useCase: parsedIntent.useCase,
           wasClamped,
+          llm: intentLlm,
         },
       });
 
@@ -317,6 +344,27 @@ export class IntentsService {
         candidateProducts as CandidateProduct[],
         rawInput,
       );
+      planLlm = planExecution.llm;
+
+      if (planLlm?.fallbackUsed) {
+        await emit({
+          intentId: intent.id,
+          type: 'SYSTEM_EVENT',
+          actor: 'SYSTEM',
+          title: 'llm.fallback',
+          description: 'LLM planner fell back to fixture output after provider failure.',
+          metadata: {
+            event: 'llm.fallback',
+            stage: 'plan',
+            reason: planLlm.fallbackReason || 'LLM planner fallback',
+            provider: planLlm.provider,
+            model: planLlm.model,
+            latencyMs: planLlm.latencyMs,
+            attempts: planLlm.attempts,
+            mode: planLlm.mode,
+          },
+        });
+      }
 
       await emit({
         intentId: intent.id,
@@ -329,6 +377,7 @@ export class IntentsService {
           price: planExecution.unitPrice,
           productId: planExecution.pickedProduct.id,
           reasoning: planExecution.reasoning,
+          llm: planLlm,
         },
       });
 
@@ -339,10 +388,10 @@ export class IntentsService {
       const policyRules: PolicyRules = {
         currency: policy.currency,
         autonomyMode: policy.autonomyMode as any,
-        maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
-        monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
-        requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+        maxTransactionAmount: policy.maxTransactionAmount,
+        dailySpendingLimit: policy.dailySpendingLimit,
+        monthlySpendingLimit: policy.monthlySpendingLimit,
+        requireApprovalAbove: policy.requireApprovalAbove,
         allowAutoExecute: policy.allowAutoExecute,
         allowedCategories: policy.allowedCategories ?? [],
         blockedCategories: policy.blockedCategories ?? [],
@@ -351,7 +400,7 @@ export class IntentsService {
 
       const policyEvaluation: NewPolicyResult = evaluatePolicyNew(
         {
-          total: planExecution.total,
+          total: toCents(planExecution.total),
           currency: 'USD',
           category,
         },
@@ -383,9 +432,11 @@ export class IntentsService {
       lastPolicyEvaluation = policyEvaluation;
       wasBlocked = isBlocked;
 
-      let planStatus: 'APPROVED' | 'AWAITING_APPROVAL' = isAutoApproved
-        ? 'APPROVED'
-        : 'AWAITING_APPROVAL';
+      let planStatus: 'APPROVED' | 'AWAITING_APPROVAL' | 'REJECTED' = isBlocked
+        ? 'REJECTED'
+        : isAutoApproved
+          ? 'APPROVED'
+          : 'AWAITING_APPROVAL';
       const intentStatus: 'APPROVED' | 'AWAITING_APPROVAL' = isAutoApproved
         ? 'APPROVED'
         : 'AWAITING_APPROVAL';
@@ -441,9 +492,9 @@ export class IntentsService {
         },
       });
 
-      // 13. Create Approval row if manual review required
+      // 13. Create Approval row if manual review required (not blocked)
       let approvalRecord: any = null;
-      if (!isAutoApproved) {
+      if (!isAutoApproved && !isBlocked) {
         approvalRecord = await tx.approval.create({
           data: {
             userId,
@@ -522,10 +573,23 @@ export class IntentsService {
         });
       }
 
+      const ai = {
+        reasoning: planExecution.reasoning,
+        provider: planLlm?.provider ?? intentLlm?.provider ?? null,
+        model: planLlm?.model ?? intentLlm?.model ?? null,
+        mode: planLlm?.mode ?? intentLlm?.mode ?? 'fixture',
+        fallbackUsed: Boolean(intentLlm?.fallbackUsed || planLlm?.fallbackUsed || fallbackUsed),
+        fallbackReason: planLlm?.fallbackReason ?? fallbackReason ?? intentLlm?.fallbackReason ?? null,
+        latencyMs: (intentLlm?.latencyMs ?? 0) + (planLlm?.latencyMs ?? 0),
+        intentLatencyMs: intentLlm?.latencyMs ?? null,
+        planLatencyMs: planLlm?.latencyMs ?? null,
+      };
+
       return {
         intent,
         plan: {
           ...plan,
+          ai,
           riskAssessments: [riskRecord],
           approvals: approvalRecord ? [approvalRecord] : [],
         },
@@ -533,6 +597,7 @@ export class IntentsService {
         riskAssessment: riskRecord,
         alternatives: planExecution.alternatives.map((a) => a.product),
         tradeoffs: planExecution.tradeoffs,
+        ai,
         message: isAutoApproved
           ? 'Purchase plan created and pre-authorized within your policy limits.'
           : 'Purchase plan generated. Please review and authorize the plan to proceed with payment.',
@@ -550,11 +615,12 @@ export class IntentsService {
       if (replanResult.success && replanResult.replannedPlan) {
         return {
           intent: result.intent,
-          plan: replanResult.replannedPlan,
+          plan: { ...replanResult.replannedPlan, ai: result.ai },
           policyEvaluation: lastPolicyEvaluation,
           riskAssessment: replanResult.replannedPlan.riskAssessments?.[0] || result.riskAssessment,
           alternatives: result.alternatives,
           tradeoffs: replanResult.tradeoffs || result.tradeoffs,
+          ai: result.ai,
           message: 'Initial plan exceeded policy limits. Automatically re-planned with a compliant alternative.',
         };
       }

@@ -385,6 +385,38 @@ function PlanDetailContent() {
                   {plan.explanation ||
                     'Optimized across verified SQL inventory to satisfy requirements while keeping spend strictly below the authorized transaction ceiling.'}
                 </p>
+                {plan.ai && (
+                  <div className="mt-3 pt-3 border-t border-[var(--rule)] space-y-1.5 text-[11px]">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[var(--ink-3)]">AI reasoning</span>
+                      <Badge
+                        variant={plan.ai.fallbackUsed || plan.ai.mode === 'live+fallback' ? 'warning' : plan.ai.mode === 'fixture' ? 'secondary' : 'success'}
+                        className="text-[10px]"
+                      >
+                        {plan.ai.mode === 'live+fallback' ? 'live (fallback used)' : (plan.ai.mode ?? 'unknown')}
+                      </Badge>
+                      {plan.ai.fallbackUsed && (
+                        <span className="text-[var(--amber)]">Fallback output shown — not live model result.</span>
+                      )}
+                    </div>
+                    {(plan.ai.model || plan.ai.provider) && (
+                      <div className="text-[var(--ink-3)]">
+                        Model: <span className="text-[var(--ink-2)] font-mono">{[plan.ai.provider, plan.ai.model].filter(Boolean).join(' / ')}</span>
+                      </div>
+                    )}
+                    {typeof plan.ai.latencyMs === 'number' && (
+                      <div className="text-[var(--ink-3)]">
+                        Latency: <span className="text-[var(--ink-2)] font-mono">{Math.round(plan.ai.latencyMs)} ms</span>
+                        {(typeof plan.ai.intentLatencyMs === 'number' || typeof plan.ai.planLatencyMs === 'number') && (
+                          <span> (intent {plan.ai.intentLatencyMs ?? '–'} ms, plan {plan.ai.planLatencyMs ?? '–'} ms)</span>
+                        )}
+                      </div>
+                    )}
+                    {plan.ai.fallbackReason && (
+                      <div className="text-[var(--ink-3)]">Fallback reason: <span className="text-[var(--amber)]">{plan.ai.fallbackReason}</span></div>
+                    )}
+                  </div>
+                )}
               </Card>
 
               <Card className="border-[var(--rule)] bg-[var(--card)] p-5">

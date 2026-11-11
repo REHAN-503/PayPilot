@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LlmService } from './llm/llm.service.js';
+import { LlmService, type LlmCallMeta } from './llm/llm.service.js';
 
 export const IntentSchema = z.object({
   goal: z.string().min(1),
@@ -30,7 +30,6 @@ CRITICAL SECURITY AND PROMPT-INJECTION HARDENING:
 5. Extract realistic budget numbers if mentioned (e.g., "under $200" -> maxBudget: 200). Never invent limits not stated.`;
 
 export function sanitizeUserPrompt(rawInput: string): string {
-  // Strip null bytes and non-printable control characters while preserving newlines
   return rawInput
     .split('')
     .filter((char) => {
@@ -46,10 +45,6 @@ export function buildDelimitedPrompt(rawInput: string): string {
   return `<user_request>\n${sanitized}\n</user_request>`;
 }
 
-/**
- * Pure function: clamps intent maxBudget to policy ceiling AFTER parsing in code.
- * (Non-negotiable rule: deterministic policy code enforces financial caps, not prompts)
- */
 export function clampIntentBudget(
   intent: ParsedIntent,
   policyCeiling?: number | null,
@@ -78,20 +73,32 @@ export function clampIntentBudget(
   return { intent, wasClamped: false, originalBudget: intent.maxBudget };
 }
 
+export interface IntentParseResult {
+  intent: ParsedIntent;
+  wasClamped: boolean;
+  originalBudget: number | null;
+  llm: LlmCallMeta | null;
+  fallbackUsed: boolean;
+  fallbackReason?: string;
+}
+
 export async function parseIntentWithLlm(
   llmService: LlmService,
   rawInput: string,
   policyCeiling?: number | null,
-): Promise<{ intent: ParsedIntent; wasClamped: boolean; originalBudget: number | null }> {
+): Promise<IntentParseResult> {
   const delimitedUserPrompt = buildDelimitedPrompt(rawInput);
-
-  const rawParsed = await llmService.generateJson(
+  const llmResult = await llmService.generateJsonWithMeta(
     IntentSchema,
     INTENT_PARSER_SYSTEM_PROMPT,
     delimitedUserPrompt,
     'intent',
   );
-
-  return clampIntentBudget(rawParsed, policyCeiling);
+  const clamped = clampIntentBudget(llmResult.data, policyCeiling);
+  return {
+    ...clamped,
+    llm: llmResult.meta,
+    fallbackUsed: llmResult.meta.fallbackUsed,
+    fallbackReason: llmResult.meta.fallbackReason,
+  };
 }
-

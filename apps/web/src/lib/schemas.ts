@@ -88,6 +88,19 @@ export const PaymentSchema = z.object({
 });
 export type Payment = z.infer<typeof PaymentSchema>;
 
+export const PlanAiMetaSchema = z.object({
+  reasoning: z.string().nullable().optional(),
+  provider: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
+  mode: z.enum(['live', 'live+fallback', 'fixture']).nullable().optional(),
+  fallbackUsed: z.boolean().optional(),
+  fallbackReason: z.string().nullable().optional(),
+  latencyMs: z.number().nullable().optional(),
+  intentLatencyMs: z.number().nullable().optional(),
+  planLatencyMs: z.number().nullable().optional(),
+}).passthrough();
+export type PlanAiMeta = z.infer<typeof PlanAiMetaSchema>;
+
 export const PurchasePlanSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -103,6 +116,7 @@ export const PurchasePlanSchema = z.object({
   explanation: z.string().nullable().optional(),
   alternatives: z.any().nullable().optional(),
   tradeoffs: z.array(z.string()).nullable().optional(),
+  ai: PlanAiMetaSchema.nullable().optional(),
   expiresAt: z.string().nullable().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),

@@ -621,8 +621,13 @@ export class NegotiationService {
     history: RoundProposal[],
     productName: string,
   ): Promise<{ action: any; price: number; rationale: string }> {
-    // If running in DEMO_MODE or without real LLM keys, use deterministic rule concession directly
-    if (this.llmService.isDemoMode()) {
+    const liveRequired = this.llmService.isForceLive() || this.llmService.isLiveRequired();
+    const canUseLive = this.llmService.hasLiveProvider();
+
+    if (!canUseLive) {
+      if (liveRequired) {
+        throw new Error(`Live LLM required for negotiation but no provider is configured`);
+      }
       return generateDeterministicRound(roundNumber, speaker, context, history);
     }
 
@@ -641,7 +646,7 @@ History:
 ${JSON.stringify(history)}
 Propose your next offer price and rationale.`;
 
-        const result = await this.llmService.generateJson(BuyerOfferSchema, systemPrompt, userPrompt);
+        const result = await this.llmService.generateJson(BuyerOfferSchema, systemPrompt, userPrompt, 'intent');
         return {
           action: roundNumber >= context.maxRounds ? 'ACCEPT' : 'COUNTER',
           price: result.offerPrice,
@@ -660,7 +665,7 @@ History:
 ${JSON.stringify(history)}
 Provide your action (ACCEPT, COUNTER, REJECT), price, and rationale.`;
 
-        const result = await this.llmService.generateJson(MerchantOfferSchema, systemPrompt, userPrompt);
+        const result = await this.llmService.generateJson(MerchantOfferSchema, systemPrompt, userPrompt, 'intent');
         return {
           action: result.action,
           price: result.price,
@@ -668,6 +673,9 @@ Provide your action (ACCEPT, COUNTER, REJECT), price, and rationale.`;
         };
       }
     } catch (err) {
+      if (liveRequired) {
+        throw err;
+      }
       this.logger.warn(
         `[Negotiation] LLM call failed for ${speaker} round ${roundNumber}: ${(err as Error).message}. Falling back to deterministic concession.`,
       );
