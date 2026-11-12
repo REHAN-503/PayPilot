@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { assertPlanTransition } from '../state-machines/plan.sm.js';
 import { evaluate, type PolicyRules } from '../policy/policy.engine.js';
 import { assess } from '../policy/risk.gate.js';
+import { fromCents, sumCents } from '../common/money.js';
 
 export interface ReplanResult {
   success: boolean;
@@ -74,11 +75,11 @@ export class ReplanService {
       }),
     ]);
 
-    const dailySpent = dailyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const monthlySpent = monthlyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const dailySpent = fromCents(sumCents(...dailyTx.map((tx) => tx.amount)));
+    const monthlySpent = fromCents(sumCents(...monthlyTx.map((tx) => tx.amount)));
 
     // Determine target budget constraint
-    const maxTxLimit = policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : 500;
+    const maxTxLimit = policy.maxTransactionAmount == null ? 500 : Number(policy.maxTransactionAmount);
     const dailyRemaining = policy.dailySpendingLimit
       ? Math.max(0, Number(policy.dailySpendingLimit) - dailySpent)
       : maxTxLimit;
@@ -121,10 +122,10 @@ export class ReplanService {
     const policyRules: PolicyRules = {
       currency: policy.currency,
       autonomyMode: policy.autonomyMode as any,
-      maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
-      dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
-      monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
-      requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+      maxTransactionAmount: policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount),
+      dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
+      monthlySpendingLimit: policy.monthlySpendingLimit == null ? null : Number(policy.monthlySpendingLimit),
+      requireApprovalAbove: policy.requireApprovalAbove == null ? null : Number(policy.requireApprovalAbove),
       allowAutoExecute: policy.allowAutoExecute,
       allowedCategories: policy.allowedCategories,
       blockedCategories: policy.blockedCategories,
@@ -142,7 +143,7 @@ export class ReplanService {
       { total, category: replacement.category, quantity, version: currentPlan.version + 1 },
       {
         dailySpentSoFar: dailySpent,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+        dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
       },
     );
 

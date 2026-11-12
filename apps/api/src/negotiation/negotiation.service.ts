@@ -20,6 +20,7 @@ import {
 } from './negotiation.engine.js';
 import { evaluate, type PolicyRules } from '../policy/policy.engine.js';
 import { assess, type PlanRiskInput, type UserHistoryMetrics } from '../policy/risk.gate.js';
+import { fromCents, sumCents } from '../common/money.js';
 
 export interface SafeNegotiationResponse {
   id: string;
@@ -119,8 +120,8 @@ export class NegotiationService {
       }),
     ]);
 
-    const dailySpent = dailyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const monthlySpent = monthlyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const dailySpent = fromCents(sumCents(...dailyTx.map((tx) => tx.amount)));
+    const monthlySpent = fromCents(sumCents(...monthlyTx.map((tx) => tx.amount)));
     const pastPaymentsCount = allTx.length;
     const totalSpentAllTime = allTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
     const typicalSpendAverage = pastPaymentsCount > 0 ? totalSpentAllTime / pastPaymentsCount : 0;
@@ -136,7 +137,7 @@ export class NegotiationService {
     }
 
     // Buyer ceiling strictly enforced: min(plan.total, maxTransactionAmount, dailyRemaining)
-    const maxTxLimit = policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : initialPrice;
+    const maxTxLimit = policy.maxTransactionAmount == null ? initialPrice : Number(policy.maxTransactionAmount);
     const dailyRemaining = policy.dailySpendingLimit
       ? Math.max(0, Number(policy.dailySpendingLimit) - dailySpent)
       : initialPrice;
@@ -360,14 +361,14 @@ export class NegotiationService {
       // Re-evaluate policy and risk for the new plan
       const policyRules: PolicyRules = {
         currency: policy.currency || 'USD',
-        maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
-        monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
+        maxTransactionAmount: policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount),
+        dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
+        monthlySpendingLimit: policy.monthlySpendingLimit == null ? null : Number(policy.monthlySpendingLimit),
         allowedCategories: policy.allowedCategories || [],
         blockedCategories: policy.blockedCategories || [],
         autoApproveCategories: policy.autoApproveCategories || [],
         allowAutoExecute: policy.allowAutoExecute ?? false,
-        requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+        requireApprovalAbove: policy.requireApprovalAbove == null ? null : Number(policy.requireApprovalAbove),
         autonomyMode: policy.autonomyMode as any,
       };
 
@@ -399,7 +400,7 @@ export class NegotiationService {
         typicalSpendAverage,
         pastPaymentsCount,
         dailySpentSoFar: dailySpent,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+        dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
         purchasedCategories,
         recentPaymentsIn10Min: recentTx.length,
       };

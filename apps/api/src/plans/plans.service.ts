@@ -136,10 +136,10 @@ export class PlansService {
     }
 
     return {
-      dailySpent: dailySpentCents,
-      monthlySpent: monthlySpentCents,
+      dailySpent: fromCents(dailySpentCents),
+      monthlySpent: fromCents(monthlySpentCents),
       pastPaymentsCount,
-      typicalSpendAverage: typicalSpendAverageCents,
+      typicalSpendAverage: fromCents(typicalSpendAverageCents),
       purchasedCategories,
       recentPaymentsIn10Min: recentTx.length,
     };

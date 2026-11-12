@@ -52,6 +52,20 @@ describe('PlansService Governance & Approval Gates', () => {
     );
   });
 
+  it('returns historical spend and average in dollars, not cents', async () => {
+    mockPrisma.transaction.findMany
+      .mockResolvedValueOnce([{ amount: '12.34' }])
+      .mockResolvedValueOnce([{ amount: '12.34' }, { amount: '0.66' }])
+      .mockResolvedValueOnce([{ amount: '12.34' }, { amount: '0.66' }])
+      .mockResolvedValueOnce([]);
+
+    await expect(service.getHistoricalMetrics('user-1')).resolves.toMatchObject({
+      dailySpent: 12.34,
+      monthlySpent: 13,
+      typicalSpendAverage: 6.5,
+    });
+  });
+
   describe('approvePlan()', () => {
     it('throws NotFoundException if plan does not exist', async () => {
       mockPrisma.purchasePlan.findFirst.mockResolvedValue(null);

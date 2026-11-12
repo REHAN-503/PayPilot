@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { z } from 'zod';
 import type { updatePolicySchema } from './policy.schema.js';
 import { evaluate } from './policy.engine.js';
+import { fromCents, sumCents } from '../common/money.js';
 
 @Injectable()
 export class PolicyService {
@@ -32,8 +33,8 @@ export class PolicyService {
       }),
     ]);
 
-    const spentToday = dailyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const spentMonth = monthlyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const spentToday = fromCents(sumCents(...dailyTx.map((tx) => tx.amount)));
+    const spentMonth = fromCents(sumCents(...monthlyTx.map((tx) => tx.amount)));
 
     return { spentToday, spentMonth };
   }
@@ -61,8 +62,8 @@ export class PolicyService {
     });
 
     const spend = await this.getSpendMetrics(userId);
-    const dailyLimit = policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null;
-    const monthlyLimit = policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null;
+    const dailyLimit = policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit);
+    const monthlyLimit = policy.monthlySpendingLimit == null ? null : Number(policy.monthlySpendingLimit);
 
     return {
       policy,
@@ -145,10 +146,10 @@ export class PolicyService {
       {
         currency: policy.currency,
         autonomyMode: policy.autonomyMode,
-        maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
-        monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
-        requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+        maxTransactionAmount: policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount),
+        dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
+        monthlySpendingLimit: policy.monthlySpendingLimit == null ? null : Number(policy.monthlySpendingLimit),
+        requireApprovalAbove: policy.requireApprovalAbove == null ? null : Number(policy.requireApprovalAbove),
         allowAutoExecute: policy.allowAutoExecute,
         allowedCategories: policy.allowedCategories,
         blockedCategories: policy.blockedCategories,
@@ -168,10 +169,10 @@ export class PolicyService {
       remainingMonthly: spendMetrics.monthlyRemaining,
       limits: {
         currency: policy.currency,
-        maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
-        monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
-        requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+        maxTransactionAmount: policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount),
+        dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
+        monthlySpendingLimit: policy.monthlySpendingLimit == null ? null : Number(policy.monthlySpendingLimit),
+        requireApprovalAbove: policy.requireApprovalAbove == null ? null : Number(policy.requireApprovalAbove),
         autonomyMode: policy.autonomyMode,
         allowAutoExecute: policy.allowAutoExecute,
         allowedCategories: policy.allowedCategories,

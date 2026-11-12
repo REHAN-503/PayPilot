@@ -19,6 +19,7 @@ import { assertIntentTransition, type IntentStatus } from '../state-machines/int
 import { evaluate, type PolicyRules } from '../policy/policy.engine.js';
 import { assess, applyRiskGate } from '../policy/risk.gate.js';
 import { PolicyService } from '../policy/policy.service.js';
+import { fromCents, sumCents } from '../common/money.js';
 
 export type RecommendedNextAction =
   | 'RETRY_PAYMENT'
@@ -169,10 +170,10 @@ export class PaymentsService {
     const policyRules: PolicyRules = {
       currency: policy.currency,
       autonomyMode: policy.autonomyMode as any,
-      maxTransactionAmount: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null,
-      dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
-      monthlySpendingLimit: policy.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null,
-      requireApprovalAbove: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null,
+      maxTransactionAmount: policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount),
+      dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
+      monthlySpendingLimit: policy.monthlySpendingLimit == null ? null : Number(policy.monthlySpendingLimit),
+      requireApprovalAbove: policy.requireApprovalAbove == null ? null : Number(policy.requireApprovalAbove),
       allowAutoExecute: policy.allowAutoExecute,
       allowedCategories: policy.allowedCategories,
       blockedCategories: policy.blockedCategories,
@@ -194,8 +195,8 @@ export class PaymentsService {
       }),
     ]);
 
-    const dailySpent = dailyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const monthlySpent = monthlyTx.reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const dailySpent = fromCents(sumCents(...dailyTx.map((tx) => tx.amount)));
+    const monthlySpent = fromCents(sumCents(...monthlyTx.map((tx) => tx.amount)));
 
     const firstItem = plan.items[0];
     const category = firstItem?.product?.category ?? plan.intent?.category ?? null;
@@ -231,7 +232,7 @@ export class PaymentsService {
       },
       {
         dailySpentSoFar: dailySpent,
-        dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+        dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
       },
     );
 

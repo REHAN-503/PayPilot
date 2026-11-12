@@ -52,10 +52,10 @@ export default function PolicyCenterPage() {
     setSyncedPolicyId(policyData.policy.id || 'loaded');
     const p = policyData.policy;
     setAutonomyMode(p.autonomyMode || 'ASK_EVERY_TIME');
-    setMaxTx(p.maxTransactionAmount ? String(p.maxTransactionAmount) : '500');
-    setDailyLimit(p.dailySpendingLimit ? String(p.dailySpendingLimit) : '1000');
-    setMonthlyLimit(p.monthlySpendingLimit ? String(p.monthlySpendingLimit) : '5000');
-    setRequireApprovalAbove(p.requireApprovalAbove ? String(p.requireApprovalAbove) : '150');
+    setMaxTx(p.maxTransactionAmount != null ? String(p.maxTransactionAmount) : '500');
+    setDailyLimit(p.dailySpendingLimit != null ? String(p.dailySpendingLimit) : '1000');
+    setMonthlyLimit(p.monthlySpendingLimit != null ? String(p.monthlySpendingLimit) : '5000');
+    setRequireApprovalAbove(p.requireApprovalAbove != null ? String(p.requireApprovalAbove) : '150');
     setAllowAutoExecute(p.allowAutoExecute ?? false);
     setAllowNegotiation(p.allowNegotiation ?? true);
     setNegotiationRounds(p.negotiationMaxRounds ?? 3);

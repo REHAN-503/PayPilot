@@ -23,7 +23,7 @@ import {
   type RiskAssessmentResult as NewRiskResult,
 } from '../policy/risk.gate.js';
 import { ReplanService } from '../replan/replan.service.js';
-import { toCents, sumCents } from '../common/money.js';
+import { toCents, fromCents, sumCents } from '../common/money.js';
 
 export type ActivityCallback = (activity: any) => void;
 
@@ -68,7 +68,7 @@ export class IntentsService {
     const dailySpentCents = sumCents(...dailyTransactions.map((tx) => tx.amount));
     const monthlySpentCents = sumCents(...monthlyTransactions.map((tx) => tx.amount));
 
-    return { dailySpent: dailySpentCents, monthlySpent: monthlySpentCents };
+    return { dailySpent: fromCents(dailySpentCents), monthlySpent: fromCents(monthlySpentCents) };
   }
 
   async create(userId: string, rawInput: string, onActivity?: ActivityCallback) {
@@ -88,7 +88,7 @@ export class IntentsService {
       update: {},
     });
 
-    const policyCeiling = policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null;
+    const policyCeiling = policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount);
     const { dailySpent, monthlySpent } = await this.calculateHistoricalSpend(userId);
 
     // Detect adversarial prompt injection indicators in raw text
@@ -418,7 +418,7 @@ export class IntentsService {
         },
         {
           dailySpentSoFar: dailySpent,
-          dailySpendingLimit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null,
+          dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
         },
       );
 

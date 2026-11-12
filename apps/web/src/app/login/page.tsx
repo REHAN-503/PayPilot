@@ -13,8 +13,8 @@ import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = React.useState('demo@paypilot.ai');
-  const [password, setPassword] = React.useState('Password123!');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDemoLoading, setIsDemoLoading] = React.useState(false);
 

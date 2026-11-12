@@ -73,9 +73,9 @@ export class ReceiptsService {
     const risk = payment.plan.riskAssessments[0] ?? null;
     const rules = policy
       ? [
-          { name: 'Transaction limit', value: amount, limit: policy.maxTransactionAmount ? Number(policy.maxTransactionAmount) : null, passed: !policy.maxTransactionAmount || amount <= Number(policy.maxTransactionAmount) },
-          { name: 'Daily spending limit', value: amount, limit: policy.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null, passed: true },
-          { name: 'Approval threshold', value: amount, limit: policy.requireApprovalAbove ? Number(policy.requireApprovalAbove) : null, passed: !policy.requireApprovalAbove || amount <= Number(policy.requireApprovalAbove) || payment.plan.approvals.some((approval) => approval.status === 'APPROVED') },
+          { name: 'Transaction limit', value: amount, limit: policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount), passed: policy.maxTransactionAmount == null || amount <= Number(policy.maxTransactionAmount) },
+          { name: 'Daily spending limit', value: amount, limit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit), passed: true },
+          { name: 'Approval threshold', value: amount, limit: policy.requireApprovalAbove == null ? null : Number(policy.requireApprovalAbove), passed: policy.requireApprovalAbove == null || amount <= Number(policy.requireApprovalAbove) || payment.plan.approvals.some((approval) => approval.status === 'APPROVED') },
         ]
       : [];
 
