@@ -274,7 +274,7 @@ function PaymentDetailContent() {
                 {isConfirmed
                   ? 'Payment has been authoritatively verified via PayPal webhook and stamped to the immutable ledger. No action required.'
                   : isCaptured
-                  ? 'Payment is captured in sandbox. Awaiting webhook delivery from PayPal. You can use the Sandbox Simulator below to simulate instant webhook verification.'
+                  ? 'PayPal has captured this payment. Awaiting webhook confirmation.'
                   : 'Payer action required. Complete the PayPal Smart Checkout dialog to authorize fund capture.'}
               </p>
             </Card>
@@ -306,8 +306,8 @@ function PaymentDetailContent() {
               </div>
             </Card>
 
-            {/* Dev Sandbox Simulator Panel */}
-            <Card className="border-[var(--amber)] bg-[var(--card)] p-5 ">
+            {/* Keep the webhook simulator out of production payment records. */}
+            {process.env.NODE_ENV !== 'production' && <Card className="border-[var(--amber)] bg-[var(--card)] p-5 ">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--amber)]">
                   <PlayCircle className="w-4 h-4 text-[var(--amber)]" />
@@ -360,7 +360,7 @@ function PaymentDetailContent() {
                   Duplicate Test
                 </Button>
               </div>
-            </Card>
+            </Card>}
           </div>
         </div>
       </div>

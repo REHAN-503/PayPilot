@@ -485,7 +485,7 @@ export class PaymentsService {
             type: 'PAYMENT_CAPTURED',
             actor: 'AGENT',
             title: 'Payment captured via PayPal Orders v2',
-            description: `Funds captured via PayPal Sandbox (Capture ID: ${captureId}). Recorded to immutable ledger. Awaiting authoritative webhook confirmation.`,
+            description: `Funds captured via PayPal (Capture ID: ${captureId}). Recorded to immutable ledger. Awaiting authoritative webhook confirmation.`,
             metadata: {
               captureId,
               orderId: payment.paypalOrderId,

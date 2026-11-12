@@ -3,7 +3,7 @@ services:
   - type: web
     name: paypilot-api
     runtime: node
-    plan: starter
+    plan: free
     region: ohio
     buildCommand: pnpm install && pnpm --filter api build
     startCommand: pnpm --filter api start:prod
@@ -12,7 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 4000
+        value: 10000
       - key: DATABASE_URL
         fromDatabase:
           name: paypilot-postgres
@@ -20,11 +20,23 @@ services:
       - key: BETTER_AUTH_SECRET
         generateValue: true
       - key: BETTER_AUTH_URL
-        value: https://paypilot-api.onrender.com
+        value: https://paypilot-api-85n1.onrender.com
+      - key: WEB_ORIGIN
+        sync: false
       - key: DEMO_MODE
+        value: "false"
+      - key: LLM_FORCE_LIVE
         value: "true"
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: LLM_MODEL
+        value: nvidia/nemotron-3.5-super-vl:free
+      - key: OPENROUTER_API_KEY
+        sync: false
       - key: PAYPAL_API_BASE_URL
-        value: https://api-m.sandbox.paypal.com
+        value: https://api-m.paypal.com
+      - key: PAYPAL_CURRENCY
+        value: USD
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
@@ -36,7 +48,7 @@ services:
   - type: web
     name: paypilot-web
     runtime: node
-    plan: starter
+    plan: free
     region: ohio
     buildCommand: pnpm install && pnpm --filter web build
     startCommand: pnpm --filter web start
@@ -44,16 +56,11 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
+        value: 10000
       - key: NEXT_PUBLIC_API_URL
-        value: https://paypilot-api.onrender.com
+        value: https://paypilot-api-85n1.onrender.com
       - key: NEXT_PUBLIC_PAYPAL_CLIENT_ID
         sync: false
-
-databases:
-  - name: paypilot-postgres
-    plan: starter
-    region: ohio
-    databaseName: paypilot
-    user: paypilot
+      - key: NEXT_PUBLIC_PAYPAL_CURRENCY
+        value: USD
 

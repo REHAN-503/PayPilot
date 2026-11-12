@@ -153,7 +153,7 @@ export const api = {
       llmProvider?: string;
       llmModel?: string;
       llmConfigured?: boolean;
-      paypalMode: 'sandbox' | 'mock';
+      paypalMode: 'sandbox' | 'live' | 'mock';
       simulatorEnabled: boolean;
       environment?: string;
     }>('/api/health/config', { method: 'GET' }),

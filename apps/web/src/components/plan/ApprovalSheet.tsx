@@ -53,7 +53,7 @@ export function ApprovalSheet({
       setIsApproving(true);
       const updated = await api.approvePlan(plan.id, 'User authorized purchase via Approval Sheet');
       toast.success('Purchase Plan Authorized', {
-        description: 'You can now complete checkout with PayPal Sandbox.',
+        description: 'You can now complete checkout securely with PayPal.',
       });
       setApprovedSuccess(true);
       if (onPlanUpdated) onPlanUpdated(updated);
@@ -293,10 +293,16 @@ export function ApprovalSheet({
                         toast.error('Payment reference missing');
                         return;
                       }
-                      await api.capturePayment(paymentId, data.orderID);
-                      toast.success('PayPal Payment Captured!', {
-                        description: 'Awaiting authoritative webhook confirmation timestamp.',
-                      });
+                      const captureResult = await api.capturePayment(paymentId, data.orderID);
+                      if (captureResult.status === 'CAPTURED') {
+                        toast.success('PayPal payment captured', {
+                          description: 'PayPal confirmed the capture. Final webhook confirmation is pending.',
+                        });
+                      } else {
+                        toast.info('PayPal is processing your payment', {
+                          description: captureResult.message || 'We will update the transaction when PayPal confirms it.',
+                        });
+                      }
                       onOpenChange(false);
                       router.push(`/payments/${paymentId}`);
                     } catch (err: unknown) {

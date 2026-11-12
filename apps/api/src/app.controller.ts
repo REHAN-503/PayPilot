@@ -2,12 +2,14 @@ import { Controller, Get, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { LlmService } from './agent/llm/llm.service.js';
+import { PayPalClient } from './paypal/paypal.client.js';
 
 @Controller()
 export class AppController {
   constructor(
     @Optional() private readonly config?: ConfigService,
     @Optional() private readonly llmService?: LlmService,
+    @Optional() private readonly paypalClient?: PayPalClient,
   ) {}
 
   @AllowAnonymous()
@@ -35,7 +37,7 @@ export class AppController {
       llmProvider: llm?.llmProvider ?? (this.config?.get<string>('LLM_PROVIDER') || 'anthropic'),
       llmModel: llm?.llmModel ?? (this.config?.get<string>('LLM_MODEL') || ''),
       llmConfigured,
-      paypalMode: demoMode ? 'mock' : 'sandbox',
+      paypalMode: this.paypalClient?.getMode() ?? (demoMode ? 'mock' : 'sandbox'),
       simulatorEnabled: false,
       environment: nodeEnv,
     } as const;

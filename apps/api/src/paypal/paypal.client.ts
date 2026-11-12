@@ -119,6 +119,11 @@ export class PayPalClient {
     );
   }
 
+  getMode(): 'mock' | 'sandbox' | 'live' {
+    if (this.demoMode && !this.hasValidCredentials()) return 'mock';
+    return this.baseUrl.includes('sandbox') ? 'sandbox' : 'live';
+  }
+
   getCurrency(): string {
     return (this.config.get<string>('PAYPAL_CURRENCY') || 'USD').toUpperCase();
   }
@@ -304,7 +309,7 @@ export class PayPalClient {
     idempotencyKey: string,
     expectedAmount?: { total: number | string; currency?: string },
   ): Promise<PayPalCaptureResponse> {
-    if ((!this.hasValidCredentials() && this.demoMode) || orderId.startsWith('MOCK-')) {
+    if (this.demoMode && (!this.hasValidCredentials() || orderId.startsWith('MOCK-'))) {
       const mockCapId = `MOCK-CAP-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
       const savedMock = this.mockOrders.get(orderId);
       const value =
@@ -368,7 +373,7 @@ export class PayPalClient {
   }
 
   async getOrder(orderId: string): Promise<PayPalOrderResponse> {
-    if ((!this.hasValidCredentials() && this.demoMode) || orderId.startsWith('MOCK-')) {
+    if (this.demoMode && (!this.hasValidCredentials() || orderId.startsWith('MOCK-'))) {
       return {
         id: orderId,
         status: 'APPROVED',
