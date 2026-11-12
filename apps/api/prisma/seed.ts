@@ -186,6 +186,126 @@ const products = [
     stock: 16,
     imageUrl: 'https://placehold.co/600x600?text=VocalPeak+Mic',
   },
+  {
+    sku: 'ELEC-008', name: 'NovaView 24-inch Full HD Monitor', slug: 'novaview-24-fhd-monitor',
+    description: 'Compact IPS monitor with an anti-glare screen and adjustable stand for everyday work.',
+    category: 'Electronics', price: '139.99', stock: 24, imageUrl: 'https://placehold.co/600x600?text=24-inch+Monitor',
+  },
+  {
+    sku: 'ELEC-009', name: 'PixelView 27-inch QHD Monitor', slug: 'pixelview-27-qhd-monitor',
+    description: '27-inch QHD IPS display with crisp text, wide viewing angles, and USB-C connectivity.',
+    category: 'Electronics', price: '249.99', stock: 16, imageUrl: 'https://placehold.co/600x600?text=27-inch+QHD',
+  },
+  {
+    sku: 'ELEC-010', name: 'TerraBook 14-inch Work Laptop', slug: 'terrabook-14-work-laptop',
+    description: 'Lightweight productivity laptop with 16GB memory, 512GB storage, and all-day battery life.',
+    category: 'Electronics', price: '749.99', stock: 9, imageUrl: 'https://placehold.co/600x600?text=Work+Laptop',
+  },
+  {
+    sku: 'ELEC-011', name: 'Northstar 15-inch Business Laptop', slug: 'northstar-15-business-laptop',
+    description: 'Business laptop with a 15-inch display, 16GB memory, 1TB storage, and fingerprint login.',
+    category: 'Electronics', price: '999.00', stock: 7, imageUrl: 'https://placehold.co/600x600?text=Business+Laptop',
+  },
+  {
+    sku: 'ELEC-012', name: 'ClearTone USB-C Over-Ear Headset', slug: 'cleartone-usbc-headset',
+    description: 'Comfortable wired headset with a noise-reducing microphone for calls and meetings.',
+    category: 'Electronics', price: '59.99', stock: 30, imageUrl: 'https://placehold.co/600x600?text=USB-C+Headset',
+  },
+  {
+    sku: 'ELEC-013', name: 'BrightBeam 1080p Portable Projector', slug: 'brightbeam-portable-projector',
+    description: 'Portable 1080p projector with HDMI and built-in speakers for presentations.',
+    category: 'Electronics', price: '219.99', stock: 8, imageUrl: 'https://placehold.co/600x600?text=Portable+Projector',
+  },
+  {
+    sku: 'ELEC-014', name: 'ArcPoint Wi-Fi 6 Router', slug: 'arcpoint-wifi-6-router',
+    description: 'Dual-band Wi-Fi 6 router with coverage for home offices and small workspaces.',
+    category: 'Electronics', price: '119.99', stock: 18, imageUrl: 'https://placehold.co/600x600?text=Wi-Fi+6+Router',
+  },
+  {
+    sku: 'ACC-004', name: 'KeyFlow TKL Mechanical Keyboard', slug: 'keyflow-tkl-mechanical-keyboard',
+    description: 'Tenkeyless mechanical keyboard with hot-swappable quiet tactile switches.',
+    category: 'Accessories', price: '119.99', stock: 15, imageUrl: 'https://placehold.co/600x600?text=Mechanical+Keyboard',
+  },
+  {
+    sku: 'ACC-005', name: 'ErgoFlow Vertical Wireless Mouse', slug: 'ergoflow-vertical-mouse',
+    description: 'Wireless ergonomic vertical mouse with adjustable DPI and USB-C charging.',
+    category: 'Accessories', price: '54.99', stock: 22, imageUrl: 'https://placehold.co/600x600?text=Vertical+Mouse',
+  },
+  {
+    sku: 'ACC-006', name: 'LiftDesk Electric Standing Desk', slug: 'liftdesk-electric-standing-desk',
+    description: 'Height-adjustable electric desk with memory presets and a sturdy work surface.',
+    category: 'Accessories', price: '399.99', stock: 6, imageUrl: 'https://placehold.co/600x600?text=Standing+Desk',
+  },
+  {
+    sku: 'ACC-007', name: 'AlignPro Adjustable Monitor Arm', slug: 'alignpro-monitor-arm',
+    description: 'Gas-spring monitor arm with smooth height, tilt, and rotation adjustment.',
+    category: 'Accessories', price: '89.99', stock: 19, imageUrl: 'https://placehold.co/600x600?text=Monitor+Arm',
+  },
+  {
+    sku: 'ACC-008', name: 'PortMatrix Thunderbolt 4 Dock', slug: 'portmatrix-thunderbolt-4-dock',
+    description: 'Desk dock with dual display outputs, fast charging, Ethernet, and multiple USB ports.',
+    category: 'Accessories', price: '189.99', stock: 11, imageUrl: 'https://placehold.co/600x600?text=Thunderbolt+Dock',
+  },
+  {
+    sku: 'ACC-009', name: 'Evergreen Recycled Desk Mat', slug: 'evergreen-recycled-desk-mat',
+    description: 'Large non-slip desk mat made with recycled materials and a water-resistant surface.',
+    category: 'Accessories', price: '29.99', stock: 40, imageUrl: 'https://placehold.co/600x600?text=Desk+Mat',
+  },
+  {
+    sku: 'WORK-003', name: 'ClearFrame 2K Conference Webcam', slug: 'clearframe-2k-conference-webcam',
+    description: '2K webcam with autofocus, a privacy shutter, and dual noise-reducing microphones.',
+    category: 'Work', price: '89.99', stock: 20, imageUrl: 'https://placehold.co/600x600?text=2K+Webcam',
+  },
+  {
+    sku: 'WORK-004', name: 'SoundDesk USB Podcast Microphone', slug: 'sounddesk-usb-podcast-microphone',
+    description: 'USB condenser microphone with a desktop stand, mute control, and headphone monitoring.',
+    category: 'Work', price: '69.99', stock: 17, imageUrl: 'https://placehold.co/600x600?text=USB+Microphone',
+  },
+  {
+    sku: 'WORK-005', name: 'PaperTrail A4 Laser Printer', slug: 'papertrail-a4-laser-printer',
+    description: 'Compact monochrome laser printer with duplex printing and wireless connectivity.',
+    category: 'Work', price: '179.99', stock: 7, imageUrl: 'https://placehold.co/600x600?text=Laser+Printer',
+  },
+  {
+    sku: 'WORK-006', name: 'FieldNote A4 Paper Ream', slug: 'fieldnote-a4-paper-ream',
+    description: '500-sheet pack of sustainably sourced, bright white A4 office paper.',
+    category: 'Work', price: '8.99', stock: 100, imageUrl: 'https://placehold.co/600x600?text=A4+Paper',
+  },
+  {
+    sku: 'WORK-007', name: 'FieldNote Refillable Pen Set', slug: 'fieldnote-refillable-pen-set',
+    description: 'Set of four smooth-writing refillable pens with black ink and a storage case.',
+    category: 'Work', price: '14.99', stock: 60, imageUrl: 'https://placehold.co/600x600?text=Pen+Set',
+  },
+  {
+    sku: 'HOME-004', name: 'QuietCurrent Compact Desk Fan', slug: 'quietcurrent-compact-desk-fan',
+    description: 'Quiet USB-powered desk fan with three speeds and adjustable tilt.',
+    category: 'Home', price: '34.99', stock: 25, imageUrl: 'https://placehold.co/600x600?text=Desk+Fan',
+  },
+  {
+    sku: 'HOME-005', name: 'WarmGlow Adjustable Desk Lamp', slug: 'warmglow-adjustable-desk-lamp',
+    description: 'Dimmable LED desk lamp with adjustable color temperature and USB charging.',
+    category: 'Home', price: '44.99', stock: 21, imageUrl: 'https://placehold.co/600x600?text=Desk+Lamp',
+  },
+  {
+    sku: 'HOME-006', name: 'FreshAir HEPA Desktop Purifier', slug: 'freshair-hepa-desktop-purifier',
+    description: 'Small-room HEPA air purifier with quiet sleep mode and replaceable filter.',
+    category: 'Home', price: '89.99', stock: 13, imageUrl: 'https://placehold.co/600x600?text=HEPA+Purifier',
+  },
+  {
+    sku: 'LIFE-003', name: 'RoamReady 20L Commuter Backpack', slug: 'roamready-20l-backpack',
+    description: 'Weather-resistant commuter backpack with a padded laptop sleeve and organizer pockets.',
+    category: 'Lifestyle', price: '79.99', stock: 18, imageUrl: 'https://placehold.co/600x600?text=Commuter+Backpack',
+  },
+  {
+    sku: 'LIFE-004', name: 'HydraLoop Insulated Steel Bottle', slug: 'hydraloop-steel-bottle',
+    description: 'Reusable insulated stainless-steel bottle with a leak-resistant lid.',
+    category: 'Lifestyle', price: '24.99', stock: 35, imageUrl: 'https://placehold.co/600x600?text=Steel+Bottle',
+  },
+  {
+    sku: 'LIFE-005', name: 'FocusBand 2 Wireless Headphones', slug: 'focusband-2-headphones',
+    description: 'Lightweight wireless headphones with active noise reduction and 30-hour battery life.',
+    category: 'Lifestyle', price: '149.99', stock: 14, imageUrl: 'https://placehold.co/600x600?text=Wireless+Headphones',
+  },
 ];
 
 async function main() {

@@ -43,7 +43,7 @@ import { DEMO_PROMPTS } from '../lib/schemas';
 import type { PurchasePlan, Product } from '../lib/schemas';
 import { api } from '../lib/api';
 import { formatCurrency, formatDate } from '../lib/utils';
-import { useIntentStream, type AgentActivity } from '../hooks/useIntentStream';
+import { useIntentStream, IntentStreamError, type AgentActivity } from '../hooks/useIntentStream';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { authClient } from '../lib/auth-client';
@@ -267,6 +267,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { stream, isStreaming } = useIntentStream();
   const { data: session } = authClient.useSession();
+  const dashboardStorageKey = session?.user?.email ? `paypilot-dashboard:${session.user.email.toLowerCase()}` : null;
+  const [restoredDashboardKey, setRestoredDashboardKey] = React.useState<string | null>(null);
 
   const greeting = React.useMemo(() => {
     const h = new Date().getHours();
@@ -276,6 +278,39 @@ export default function DashboardPage() {
   }, []);
 
   const firstName = session?.user?.name?.split(' ')[0] || 'there';
+
+  React.useEffect(() => {
+    if (!dashboardStorageKey) return;
+    try {
+      const saved = sessionStorage.getItem(dashboardStorageKey);
+      if (saved) {
+        const state = JSON.parse(saved) as {
+          goal?: string; steps?: AgentStep[]; currentStepId?: string;
+          activePlan?: PurchasePlan | null; degradedMode?: boolean; showAgentPanel?: boolean;
+        };
+        if (typeof state.goal === 'string') setGoal(state.goal);
+        if (Array.isArray(state.steps) && state.steps.length === INITIAL_AGENT_STEPS.length) setSteps(state.steps);
+        if (typeof state.currentStepId === 'string') setCurrentStepId(state.currentStepId);
+        if (state.activePlan) setActivePlan(state.activePlan);
+        if (typeof state.degradedMode === 'boolean') setDegradedMode(state.degradedMode);
+        if (typeof state.showAgentPanel === 'boolean') setShowAgentPanel(state.showAgentPanel);
+      }
+    } catch {
+      sessionStorage.removeItem(dashboardStorageKey);
+    }
+    setRestoredDashboardKey(dashboardStorageKey);
+  }, [dashboardStorageKey]);
+
+  React.useEffect(() => {
+    if (!dashboardStorageKey || restoredDashboardKey !== dashboardStorageKey) return;
+    try {
+      sessionStorage.setItem(dashboardStorageKey, JSON.stringify({
+        goal, steps, currentStepId, activePlan, degradedMode, showAgentPanel,
+      }));
+    } catch {
+      // Keep dashboard interactions available if browser storage is unavailable.
+    }
+  }, [dashboardStorageKey, restoredDashboardKey, goal, steps, currentStepId, activePlan, degradedMode, showAgentPanel]);
 
   // Queries
   const { data: plans, refetch: refetchPlans } = useQuery({
@@ -383,7 +418,8 @@ export default function DashboardPage() {
           },
           onError: () => undefined,
         });
-      } catch {
+      } catch (streamError) {
+        if (streamError instanceof IntentStreamError && streamError.requestStarted) throw streamError;
         setDegradedMode(true);
         toast.info('Using standard planning...', { id: 'plan-progress' });
         const res = await api.createIntent(textToPlan);

@@ -202,7 +202,7 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-For an external Render connection, ensure TLS is required by appending `?sslmode=require` (or `&sslmode=require` if the URL already has query parameters). Keep the URL private and unset it after the commands. The seed operation adds the 17 catalog products, demo account, and demo policy; products and policy use upserts, so seeding can be repeated.
+For an external Render connection, ensure TLS is required by appending `?sslmode=require` (or `&sslmode=require` if the URL already has query parameters). Keep the URL private and unset it after the commands. The seed operation adds 41 sample catalog products, the demo account, and demo policy; products and policy use upserts, so seeding can be repeated. Re-run `pnpm db:seed` after deploying catalog changes to add the new products to an existing database. These are sample catalog entries for the sandbox, not live merchant inventory.
 
 If migrations have already completed, do not rerun them just to seed; run `pnpm db:seed` only. Never paste database URLs or passwords into GitHub, chat, or frontend environment variables.
 

@@ -27,6 +27,8 @@ import { formatCurrency } from '../../lib/utils';
 import type { Product, PurchasePlan } from '../../lib/schemas';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
+import { authClient } from '../../lib/auth-client';
+import { useQueryClient } from '@tanstack/react-query';
 
 /* ============================================================
    TYPES
@@ -117,7 +119,7 @@ function MessageBubble({ msg, onAction }: { msg: ChatMessage; onAction: (action:
                     style={{ animationDelay: `${i * 150}ms` }} />
                 ))}
               </div>
-              <span className="text-xs text-[var(--ink-3)]">AI is thinking...</span>
+              <span className="text-xs text-[var(--ink-3)]">{msg.content || 'AI is thinking...'}</span>
             </div>
           </div>
         ) : (
@@ -192,6 +194,10 @@ function MessageBubble({ msg, onAction }: { msg: ChatMessage; onAction: (action:
    ============================================================ */
 export default function ChatPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
+  const storageKey = session?.user?.email ? `paypilot-chat:${session.user.email.toLowerCase()}` : null;
+  const [restoredForKey, setRestoredForKey] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<ChatMessage[]>([
     {
       id: '0',
@@ -213,6 +219,36 @@ export default function ChatPage() {
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  React.useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ChatMessage[];
+        if (Array.isArray(parsed)) {
+          setMessages(parsed.slice(-100).map((message) => ({
+            ...message,
+            timestamp: new Date(message.timestamp),
+            content: message.isLoading ? 'This request was interrupted when you left the chat. Check Plans before retrying it.' : message.content,
+            isLoading: false,
+          })));
+        }
+      }
+    } catch {
+      sessionStorage.removeItem(storageKey);
+    }
+    setRestoredForKey(storageKey);
+  }, [storageKey]);
+
+  React.useEffect(() => {
+    if (!storageKey || restoredForKey !== storageKey) return;
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-100)));
+    } catch {
+      // Chat remains usable when browser storage is unavailable.
+    }
+  }, [messages, restoredForKey, storageKey]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -281,8 +317,49 @@ export default function ChatPage() {
   const handleAction = (action: ChatAction) => {
     if (action.type === 'navigate') {
       router.push(action.payload);
-    } else if (action.type === 'plan' || action.type === 'prompt') {
+    } else if (action.type === 'prompt') {
       void sendMessage(action.payload);
+    } else if (action.type === 'plan') {
+      void createPlan(action.payload);
+    }
+  };
+
+  const createPlan = async (prompt: string) => {
+    if (isTyping) return;
+    const loadingId = `${Date.now()}-plan`;
+    setMessages((prev) => [...prev,
+      { id: `${loadingId}-user`, role: 'user', content: prompt, timestamp: new Date() },
+      { id: loadingId, role: 'assistant', content: 'Creating your plan and checking your spending rules…', timestamp: new Date(), isLoading: true },
+    ]);
+    setIsTyping(true);
+    try {
+      const result = await api.createIntent(prompt);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['plans'] }),
+        queryClient.invalidateQueries({ queryKey: ['timeline-recent'] }),
+        queryClient.invalidateQueries({ queryKey: ['analytics-summary'] }),
+      ]);
+      const plan = result.plan;
+      const blocked = result.policyEvaluation?.decision === 'BLOCK' && (!plan || plan.status === 'REJECTED');
+      const content = blocked
+        ? result.message || result.policyEvaluation?.violations?.join(' ') || 'This request was blocked by your spending policy.'
+        : plan
+          ? `Plan created for **${plan.items?.[0]?.productName || 'your requested purchase'}** — **${formatCurrency(plan.total)}**. Opening the plan so you can review it.`
+          : result.message || 'The planner finished without creating a purchase plan.';
+      setMessages((prev) => prev.map((message) => message.id === loadingId
+        ? { ...message, content, isLoading: false, timestamp: new Date(), actions: plan && !blocked ? [{ label: 'Open plan', type: 'navigate', payload: `/plans/${plan.id}` }] : undefined }
+        : message));
+      if (plan && !blocked) router.push(`/plans/${plan.id}`);
+    } catch (error) {
+      const message = error instanceof ApiError || error instanceof Error
+        ? error.message
+        : 'The purchase planner could not complete this request. Please try again.';
+      setMessages((prev) => prev.map((item) => item.id === loadingId
+        ? { ...item, content: `Plan creation failed: ${message}`, isLoading: false, timestamp: new Date() }
+        : item));
+      toast.error('Could not create the plan', { description: message });
+    } finally {
+      setIsTyping(false);
     }
   };
 

@@ -22,6 +22,13 @@ interface UseIntentStreamOptions {
   onError: (error: Error) => void;
 }
 
+export class IntentStreamError extends Error {
+  constructor(message: string, readonly requestStarted: boolean) {
+    super(message);
+    this.name = 'IntentStreamError';
+  }
+}
+
 export function useIntentStream() {
   const [isStreaming, setIsStreaming] = React.useState(false);
 
@@ -46,6 +53,7 @@ export function useIntentStream() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let requestStarted = false;
 
       try {
         while (true) {
@@ -60,6 +68,7 @@ export function useIntentStream() {
             if (!typeLine || !dataLine) continue;
 
             const type = typeLine.slice('event:'.length).trim();
+            requestStarted = true;
             const data = JSON.parse(dataLine.slice('data:'.length).trim()) as unknown;
             if (type === 'activity') {
               options.onActivity(data as AgentActivity);
@@ -70,14 +79,16 @@ export function useIntentStream() {
                 typeof data === 'object' && data !== null && 'message' in data
                   ? String(data.message)
                   : 'Intent stream failed';
-              throw new Error(message);
+              throw new IntentStreamError(message, true);
             }
           }
 
           if (done) break;
         }
       } catch (error) {
-        const normalized = error instanceof Error ? error : new Error('Intent stream failed');
+        const normalized = error instanceof IntentStreamError
+          ? error
+          : new IntentStreamError(error instanceof Error ? error.message : 'Intent stream failed', requestStarted);
         options.onError(normalized);
         throw normalized;
       } finally {

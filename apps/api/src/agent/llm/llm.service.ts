@@ -426,7 +426,8 @@ export class LlmService implements OnModuleInit {
 
     let lastError: unknown;
     let attempts = 0;
-    const maxAttempts = 3;
+    // Keep the planner responsive when a provider is slow or temporarily unavailable.
+    const maxAttempts = 2;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       attempts = attempt;
@@ -487,7 +488,7 @@ export class LlmService implements OnModuleInit {
 
   private async callOpenRouter<T>(schema: ZodType<T>, system: string, user: string): Promise<T> {
     if (!this.openRouterApiKey) throw new LlmUnavailableError('OpenRouter API key not configured');
-    const timeoutSignal = AbortSignal.timeout(20000);
+    const timeoutSignal = AbortSignal.timeout(15000);
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
