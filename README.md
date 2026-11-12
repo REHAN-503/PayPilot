@@ -19,7 +19,7 @@ PayPilot turns a purchase request into a reviewable plan. AI can interpret the r
 ## Submission demo
 
 1. Open the [deployed app](https://paypilot-web-4jd8.onrender.com/) and choose **Try the demo**.
-2. On the dashboard, submit: `I need a developer monitor under $250. Prioritize text clarity and value.`
+2. On the dashboard, submit: `I need a developer monitor under $250. Prioritize text clarity and value.`  
 3. Review the recommended item, alternatives, policy checks, and risk assessment.
 4. The demo policy uses **Ask Every Time**, so approve the plan and try checkout with a PayPal Sandbox buyer account. Complete the PayPal checkout to authorize the test payment.
 5. Inspect the plan, activity timeline, payment record, or trust receipt to follow the decision and settlement evidence.
