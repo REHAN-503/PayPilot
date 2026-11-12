@@ -4,7 +4,7 @@ services:
     name: paypilot-api
     runtime: node
     plan: starter
-    region: oregon
+    region: ohio
     buildCommand: pnpm install && pnpm --filter api build
     startCommand: pnpm --filter api start:prod
     healthCheckPath: /health
@@ -37,7 +37,7 @@ services:
     name: paypilot-web
     runtime: node
     plan: starter
-    region: oregon
+    region: ohio
     buildCommand: pnpm install && pnpm --filter web build
     startCommand: pnpm --filter web start
     envVars:
@@ -53,7 +53,7 @@ services:
 databases:
   - name: paypilot-postgres
     plan: starter
-    region: oregon
+    region: ohio
     databaseName: paypilot
     user: paypilot
 
