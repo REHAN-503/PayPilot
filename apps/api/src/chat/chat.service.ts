@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { LlmService } from '../agent/llm/llm.service.js';
@@ -17,6 +17,8 @@ const SYSTEM_PROMPT = `You are PayPilot AI, an assistant for the PayPilot procur
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(private readonly prisma: PrismaService, private readonly llm: LlmService) {}
 
   async respond(userId: string, rawMessage: unknown) {
@@ -61,7 +63,41 @@ export class ChatService {
       };
     } catch (error) {
       if (error instanceof LlmUnavailableError) {
-        throw new ServiceUnavailableException('PayPilot AI is temporarily unavailable. Please try again shortly.');
+        this.logger.warn(`Live chat provider failed: ${error.message}`);
+        const reason = error.message.toLowerCase();
+        if (reason.includes('http 429') || reason.includes('rate limit')) {
+          throw new ServiceUnavailableException(
+            'The OpenRouter model is rate limited. Check your OpenRouter account limits or select another available model in the API service settings.',
+          );
+        }
+        if (reason.includes('http 402') || reason.includes('insufficient credits') || reason.includes('payment required')) {
+          throw new ServiceUnavailableException(
+            'The OpenRouter account has no available inference credits for this request. Check its balance and model limits.',
+          );
+        }
+        if (reason.includes('http 404') || reason.includes('model')) {
+          throw new ServiceUnavailableException(
+            'The configured OpenRouter model is unavailable. Check LLM_MODEL on the API service.',
+          );
+        }
+        if (reason.includes('no configured provider')) {
+          throw new ServiceUnavailableException(
+            'Live AI is not configured. Set LLM_PROVIDER=openrouter, LLM_MODEL, and OPENROUTER_API_KEY on the API service.',
+          );
+        }
+        if (reason.includes('http 401') || reason.includes('http 403') || reason.includes('api key')) {
+          throw new ServiceUnavailableException(
+            'OpenRouter rejected the API credentials. Check OPENROUTER_API_KEY on the API service and redeploy it.',
+          );
+        }
+        if (reason.includes('schema validation') || reason.includes('valid json')) {
+          throw new ServiceUnavailableException(
+            'The AI provider returned an unreadable response. Try again, or choose a model with JSON output support.',
+          );
+        }
+        throw new ServiceUnavailableException(
+          'OpenRouter could not complete the request. Check the API service logs and OpenRouter account status.',
+        );
       }
       throw error;
     }

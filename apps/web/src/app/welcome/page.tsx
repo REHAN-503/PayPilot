@@ -193,7 +193,7 @@ function ScenePanel({
             </div>
             <strong className="font-mono">$229.99</strong>
           </div>
-          <div className="my-6 grid grid-cols-4 gap-2 text-center text-[10px] sm:text-xs">
+          <div className="my-6 grid grid-cols-2 gap-x-3 gap-y-4 text-center text-[10px] sm:grid-cols-4 sm:gap-2 sm:text-xs">
             {["Intent", "Policy", "Approval", "Sandbox"].map((step, i) => (
               <div key={step} className="space-y-2">
                 <span

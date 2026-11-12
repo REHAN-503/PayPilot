@@ -177,8 +177,8 @@ export default function TransactionsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-[var(--ink)] tracking-tight flex items-center gap-2.5">
-              <Receipt className="w-6 h-6 text-[var(--ledger)]" />
+            <h1 className="flex min-w-0 items-start gap-2.5 text-xl font-black tracking-tight text-[var(--ink)] sm:text-2xl">
+              <Receipt className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ledger)] sm:h-6 sm:w-6" />
               Transactions & Immutable Ledger
             </h1>
             <p className="text-xs sm:text-sm text-[var(--ink-3)] mt-1">
@@ -186,7 +186,7 @@ export default function TransactionsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
             <Button
               variant="outline"
               size="sm"
@@ -210,7 +210,7 @@ export default function TransactionsPage() {
         </div>
 
         {/* Search Bar & Quick Filter */}
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-[var(--ink-3)] absolute left-3 top-3" />
             <Input
@@ -229,7 +229,7 @@ export default function TransactionsPage() {
         {isLoading ? (
           <Skeleton className="h-[520px] w-full rounded-[var(--radius)]" />
         ) : (
-          <div className="h-[560px] w-full rounded-[var(--radius)] overflow-hidden ">
+          <div className="h-[min(560px,70dvh)] min-h-[360px] w-full min-w-0 overflow-hidden rounded-[var(--radius)]">
             <div className="ag-theme-quartz-dark w-full h-full">
               <AgGridReact
                 theme="legacy"

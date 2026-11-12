@@ -88,9 +88,9 @@ export function TopBar({ onMenuClick, notificationCount = 0 }: TopBarProps) {
   };
 
   return (
-    <header className="topbar-blur min-h-[62px] px-3 sm:px-5 py-2 flex items-center justify-between gap-3 border-b border-[var(--rule)] sticky top-0 z-30">
+    <header className="topbar-blur sticky top-0 z-30 flex min-h-[62px] items-center justify-between gap-2 border-b border-[var(--rule)] px-2.5 py-2 sm:gap-3 sm:px-5">
       {/* Left: Mobile menu + branding context */}
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <button
           onClick={onMenuClick}
           className="focus-ring pressable md:hidden p-2 rounded-[10px] text-[var(--ink-2)] hover:bg-[var(--paper-2)] transition-colors"
@@ -121,7 +121,7 @@ export function TopBar({ onMenuClick, notificationCount = 0 }: TopBarProps) {
       </div>
 
       {/* Center: Search bar */}
-      <div className="hidden md:flex flex-1 max-w-sm mx-4">
+      <div className="mx-1 hidden min-w-0 max-w-sm flex-1 lg:flex lg:mx-4">
         {searchOpen ? (
           <form onSubmit={handleSearch} className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--ink-3)]" />
@@ -140,18 +140,18 @@ export function TopBar({ onMenuClick, notificationCount = 0 }: TopBarProps) {
             className="flex items-center gap-2.5 px-3 py-2 w-full rounded-[10px] border border-[var(--rule)] bg-[var(--paper-2)]/60 text-[var(--ink-3)] text-sm hover:border-[var(--ledger)]/40 hover:bg-[var(--card)] transition-all group"
           >
             <Search className="w-4 h-4 shrink-0 group-hover:text-[var(--ledger)] transition-colors" />
-            <span className="text-[13px]">Search products &amp; plans...</span>
-            <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-[var(--rule)] font-mono">⌘K</kbd>
+            <span className="truncate text-[13px]">Search products &amp; plans...</span>
+            <kbd className="ml-auto hidden shrink-0 rounded bg-[var(--rule)] px-1.5 py-0.5 font-mono text-[10px] xl:inline-flex">⌘K</kbd>
           </button>
         )}
       </div>
 
       {/* Right controls */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="focus-ring pressable p-2 rounded-[10px] text-[var(--ink-3)] hover:bg-[var(--paper-2)] hover:text-[var(--ink)] transition-colors"
+          className="focus-ring pressable shrink-0 rounded-[10px] p-2 text-[var(--ink-3)] transition-colors hover:bg-[var(--paper-2)] hover:text-[var(--ink)]"
           aria-label={theme === 'day' ? 'Switch to dark mode' : 'Switch to light mode'}
           title={theme === 'day' ? 'Dark mode' : 'Light mode'}
         >

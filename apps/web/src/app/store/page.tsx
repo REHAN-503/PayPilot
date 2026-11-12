@@ -163,7 +163,7 @@ function ProductCard({ product, onPlan }: { product: Product; onPlan: (p: Produc
 
 function StoreSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 min-[440px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {[...Array(8)].map((_, i) => (
         <div key={i} className="glow-card overflow-hidden">
           <Skeleton className="aspect-[4/3] rounded-none" />
@@ -365,7 +365,7 @@ function StoreContent() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 min-[440px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {products.map((product, i) => (
                 <div key={product.id} className="desk-enter" style={{ animationDelay: `${i * 30}ms` }}>
                   <ProductCard product={product} onPlan={handlePlanProduct} />

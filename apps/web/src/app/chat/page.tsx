@@ -22,7 +22,7 @@ import {
 import { DashboardShell } from '../../components/layout/DashboardShell';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { api } from '../../lib/api';
+import { api, ApiError } from '../../lib/api';
 import { formatCurrency } from '../../lib/utils';
 import type { Product, PurchasePlan } from '../../lib/schemas';
 import { cn } from '../../lib/utils';
@@ -262,10 +262,15 @@ export default function ChatPage() {
       };
 
       setMessages((prev) => prev.map((m) => m.id === loadingId ? assistantMsg : m));
-    } catch {
+    } catch (error) {
+      const message = error instanceof ApiError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'The request could not reach the API service. Check your connection and try again.';
       setMessages((prev) => prev.map((m) =>
         m.id === loadingId
-          ? { ...m, content: 'PayPilot AI could not answer right now. Please retry in a moment.', isLoading: false }
+          ? { ...m, content: message, isLoading: false }
           : m,
       ));
     } finally {
@@ -299,7 +304,7 @@ export default function ChatPage() {
 
   return (
     <DashboardShell>
-      <div className="max-w-3xl mx-auto h-[calc(100vh-130px)] flex flex-col">
+      <div className="mx-auto flex h-[calc(100dvh-7rem)] min-h-0 w-full min-w-0 max-w-3xl flex-col lg:h-[calc(100dvh-8rem)]">
 
         {/* Header */}
         <div className="desk-enter flex items-center justify-between mb-4 shrink-0">

@@ -110,13 +110,15 @@ function getErrorStatus(err: unknown): number | null {
 function isRetryableProviderError(err: unknown): boolean {
   const status = getErrorStatus(err);
   if (status !== null) {
-    return status === 429 || status >= 500;
+    // Retrying a quota/rate-limit response consumes time and may count against
+    // the provider's request allowance; only retry transient server errors.
+    return status >= 500;
   }
   if (err instanceof LlmUnavailableError) {
     const msg = err.message.toLowerCase();
     if (msg.includes('schema validation failed')) return false;
     if (msg.includes('http 4') && !msg.includes('http 429')) return false;
-    return msg.includes('http 429') || msg.includes('http 5') || msg.includes('timeout') || msg.includes('timed out') || msg.includes('fetch failed') || msg.includes('network');
+    return msg.includes('http 5') || msg.includes('timeout') || msg.includes('timed out') || msg.includes('fetch failed') || msg.includes('network');
   }
   const msg = err instanceof Error ? err.message.toLowerCase() : '';
   return msg.includes('timeout') || msg.includes('timed out') || msg.includes('fetch failed') || msg.includes('network');

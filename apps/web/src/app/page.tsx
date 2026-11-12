@@ -88,7 +88,7 @@ function StatCard({ label, value, sub, icon: Icon, trend, trendValue, glowClass,
           </span>
         )}
       </div>
-      <div className="text-2xl font-black text-[var(--ink)] tracking-tight font-mono">{value}</div>
+      <div className="text-lg font-bold tracking-tight text-[var(--ink)] font-mono sm:text-2xl">{value}</div>
       <div className="text-xs text-[var(--ink-3)] mt-1 font-medium">{label}</div>
       {sub && <div className="text-[11px] text-[var(--ink-3)] mt-0.5 opacity-80">{sub}</div>}
     </div>
@@ -457,7 +457,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── KPI Stats Row ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Total Spend"
             value={formatCurrency(analyticsSummary?.totalSpend ?? 0)}
@@ -589,11 +589,11 @@ export default function DashboardPage() {
                   Edit limits →
                 </Link>
               </div>
-              <div className="flex items-end justify-between mb-2">
+              <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <span className="text-xs text-[var(--ink-3)]">
                   {formatCurrency(dailySpent)} spent
                 </span>
-                <span className="text-xs font-semibold text-[var(--ink)]">
+                <span className="text-xs font-semibold text-[var(--ink)] sm:text-right">
                   {formatCurrency(dailyRemaining)} left of {formatCurrency(dailyLimit)}
                 </span>
               </div>
@@ -631,7 +631,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
               {catalog?.data && catalog.data.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-2 sm:grid-cols-3">
                   {catalog.data.slice(0, 6).map((product) => (
                     <FeaturedProductCard
                       key={product.id}
@@ -705,7 +705,7 @@ export default function DashboardPage() {
                       <div className="text-[10px] text-[var(--ink-3)]">USD</div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {latestPlan.status === 'AWAITING_APPROVAL' && (
                       <Button
                         variant="glow"
@@ -717,7 +717,7 @@ export default function DashboardPage() {
                         Authorize & Pay
                       </Button>
                     )}
-                    <Link href={`/plans/${latestPlan.id}`} className={latestPlan.status === 'AWAITING_APPROVAL' ? '' : 'flex-1'}>
+                    <Link href={`/plans/${latestPlan.id}`} className="min-w-0 flex-1">
                       <Button variant="outline" size="sm" className="w-full text-xs">
                         View Details <ArrowRight className="w-3.5 h-3.5" />
                       </Button>

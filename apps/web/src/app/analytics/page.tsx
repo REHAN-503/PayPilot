@@ -137,8 +137,8 @@ export default function AnalyticsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-[var(--ink)] tracking-tight flex items-center gap-2.5">
-              <BarChart3 className="w-6 h-6 text-[var(--ledger)]" />
+            <h1 className="flex min-w-0 items-start gap-2.5 text-xl font-black tracking-tight text-[var(--ink)] sm:text-2xl">
+              <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ledger)] sm:h-6 sm:w-6" />
               Procurement Analytics & Governance KPIs
             </h1>
             <p className="text-xs sm:text-sm text-[var(--ink-3)] mt-1">
@@ -302,10 +302,10 @@ export default function AnalyticsPage() {
 
         {/* AG Grid Agent Activity Table */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-[var(--ink)] flex items-center gap-2">
-                <Bot className="w-5 h-5 text-[var(--brass)]" />
+              <h2 className="flex items-start gap-2 text-base font-bold leading-tight text-[var(--ink)] sm:text-lg">
+                <Bot className="mt-0.5 h-5 w-5 shrink-0 text-[var(--brass)]" />
                 Live Agent Activity Ledger (AG Grid)
               </h2>
               <p className="text-xs text-[var(--ink-3)]">
@@ -317,7 +317,7 @@ export default function AnalyticsPage() {
             </span>
           </div>
 
-          <div className="h-96 w-full rounded-[var(--radius)] overflow-hidden ">
+          <div className="h-[min(24rem,65dvh)] min-h-[320px] w-full min-w-0 overflow-hidden rounded-[var(--radius)]">
             <div className="ag-theme-quartz-dark w-full h-full">
               <AgGridReact
                 theme="legacy"
