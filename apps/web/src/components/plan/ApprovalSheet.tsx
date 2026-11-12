@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import {
   ShieldCheck,
@@ -34,7 +33,6 @@ export function ApprovalSheet({
   plan,
   onPlanUpdated,
 }: ApprovalSheetProps) {
-  const router = useRouter();
   const [isApproving, setIsApproving] = React.useState(false);
   const [isRejecting, setIsRejecting] = React.useState(false);
   const [approvedSuccess, setApprovedSuccess] = React.useState(false);
@@ -304,7 +302,10 @@ export function ApprovalSheet({
                         });
                       }
                       onOpenChange(false);
-                      router.push(`/payments/${paymentId}`);
+                      // Start a fresh app document after the cross-origin PayPal checkout
+                      // callback. This recovers cleanly if the Render web process slept
+                      // or this tab is holding a stale Next.js client bundle.
+                      window.location.assign(`/payments/${paymentId}`);
                     } catch (err: unknown) {
                       const message = err instanceof Error ? err.message : String(err);
                       toast.error('Capture Failed', { description: message });

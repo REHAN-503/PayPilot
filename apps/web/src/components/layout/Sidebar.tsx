@@ -131,7 +131,16 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={onClose}
+                      onClick={(event) => {
+                        onClose?.();
+                        // Checkout can return after the free web instance has slept, or
+                        // after a stale client bundle was left open during deployment.
+                        // A document navigation lets the browser request a fresh dashboard.
+                        if (item.href === '/') {
+                          event.preventDefault();
+                          window.location.assign('/');
+                        }
+                      }}
                       className={cn(
                         'focus-ring group relative flex items-center justify-between px-3 py-2.5 rounded-[10px] text-sm font-medium transition-all duration-150',
                         isActive
