@@ -230,6 +230,7 @@ export default function TransactionsPage() {
           <div className="h-[560px] w-full rounded-[var(--radius)] overflow-hidden ">
             <div className="ag-theme-quartz-dark w-full h-full">
               <AgGridReact
+                theme="legacy"
                 ref={gridRef}
                 rowData={rows || []}
                 columnDefs={columnDefs}

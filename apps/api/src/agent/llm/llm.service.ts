@@ -15,7 +15,7 @@ export interface FixtureEntry {
   planRanking: Record<string, unknown>;
 }
 
-export type LlmProviderName = 'anthropic' | 'gemini' | 'fixture';
+export type LlmProviderName = 'anthropic' | 'gemini' | 'openrouter' | 'fixture';
 export type LlmRuntimeMode = 'live' | 'live+fallback' | 'fixture';
 
 export interface LlmCallMeta {
@@ -44,7 +44,12 @@ interface GeminiResponse {
   error?: { message?: string };
 }
 
-const SUPPORTED_PROVIDERS = new Set(['anthropic', 'gemini']);
+interface OpenRouterResponse {
+  choices?: Array<{ message?: { content?: string | Array<{ text?: string }> } }>;
+  error?: { message?: string };
+}
+
+const SUPPORTED_PROVIDERS = new Set(['anthropic', 'gemini', 'openrouter']);
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,10 +76,25 @@ function toJsonSchema(schema: ZodType<unknown>): Record<string, unknown> | null 
   }
 }
 
-function schemaPropertyKeys(schema: ZodType<unknown>): string[] {
-  const json = toJsonSchema(schema);
-  if (!json || !isRecord(json.properties)) return [];
-  return Object.keys(json.properties);
+function withSchemaInstruction(system: string, schema: ZodType<unknown>): string {
+  const jsonSchema = toJsonSchema(schema);
+  return jsonSchema
+    ? `${system}\n\nReturn one JSON object matching this output schema exactly. Do not include markdown fences or extra commentary.\n${JSON.stringify(jsonSchema)}`
+    : system;
+}
+
+function parseJsonResponse(text: string, provider: string): unknown {
+  const normalized = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(normalized) as unknown;
+  } catch {
+    const start = normalized.indexOf('{');
+    const end = normalized.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      try { return JSON.parse(normalized.slice(start, end + 1)) as unknown; } catch { /* report below */ }
+    }
+    throw new LlmUnavailableError(`${provider} response was not valid JSON`);
+  }
 }
 
 function getErrorStatus(err: unknown): number | null {
@@ -106,6 +126,7 @@ export class LlmService implements OnModuleInit {
   private readonly logger = new Logger(LlmService.name);
   private anthropicClient: Anthropic | null = null;
   private geminiApiKey: string | null = null;
+  private openRouterApiKey: string | null = null;
 
   private readonly demoMode: boolean;
   private readonly forceLive: boolean;
@@ -137,7 +158,7 @@ export class LlmService implements OnModuleInit {
   private validateConfig(): void {
     if (!SUPPORTED_PROVIDERS.has(this.configuredProvider)) {
       throw new Error(
-        `[LlmService] Unsupported LLM_PROVIDER '${this.configuredProvider}'. Expected 'anthropic' or 'gemini'.`,
+        `[LlmService] Unsupported LLM_PROVIDER '${this.configuredProvider}'. Expected 'anthropic', 'gemini', or 'openrouter'.`,
       );
     }
 
@@ -150,6 +171,7 @@ export class LlmService implements OnModuleInit {
 
     const anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY');
     const geminiKey = this.config.get<string>('GEMINI_API_KEY');
+    const openRouterKey = this.config.get<string>('OPENROUTER_API_KEY');
 
     if (this.configuredProvider === 'anthropic' && !anthropicKey) {
       throw new Error('[LlmService] ANTHROPIC_API_KEY is required for live LLM mode (LLM_PROVIDER=anthropic).');
@@ -157,11 +179,15 @@ export class LlmService implements OnModuleInit {
     if (this.configuredProvider === 'gemini' && !geminiKey) {
       throw new Error('[LlmService] GEMINI_API_KEY is required for live LLM mode (LLM_PROVIDER=gemini).');
     }
+    if (this.configuredProvider === 'openrouter' && !openRouterKey) {
+      throw new Error('[LlmService] OPENROUTER_API_KEY is required for live LLM mode (LLM_PROVIDER=openrouter).');
+    }
   }
 
   private initializeProvider(): void {
     const anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY');
     const geminiKey = this.config.get<string>('GEMINI_API_KEY');
+    const openRouterKey = this.config.get<string>('OPENROUTER_API_KEY');
     const liveRequired = this.forceLive || !this.demoMode;
 
     if (this.configuredProvider === 'anthropic' && anthropicKey) {
@@ -172,6 +198,11 @@ export class LlmService implements OnModuleInit {
     if (this.configuredProvider === 'gemini' && geminiKey) {
       this.geminiApiKey = geminiKey;
       this.activeProvider = 'gemini';
+      return;
+    }
+    if (this.configuredProvider === 'openrouter' && openRouterKey) {
+      this.openRouterApiKey = openRouterKey;
+      this.activeProvider = 'openrouter';
       return;
     }
 
@@ -196,7 +227,7 @@ export class LlmService implements OnModuleInit {
   }
 
   hasLiveProvider(): boolean {
-    return Boolean(this.anthropicClient || this.geminiApiKey);
+    return Boolean(this.anthropicClient || this.geminiApiKey || this.openRouterApiKey);
   }
 
   getProviderName(): LlmProviderName {
@@ -330,6 +361,25 @@ export class LlmService implements OnModuleInit {
       throw new LlmUnavailableError('Live LLM mode required but no configured provider API key is available');
     }
 
+    // Keep the built-in demo prompts deterministic and independent of provider uptime.
+    // LLM_FORCE_LIVE remains available when explicitly exercising a live provider.
+    if (!liveRequired && this.demoMode) {
+      const fixtureData = this.getFixtureResult(schema, user, promptType);
+      if (fixtureData) {
+        return {
+          data: fixtureData,
+          meta: {
+            provider: 'fixture',
+            model: this.model,
+            latencyMs: Date.now() - startedAt,
+            mode: 'fixture',
+            fallbackUsed: false,
+            attempts: 0,
+          },
+        };
+      }
+    }
+
     if (!liveRequired && !liveAvailable) {
       const fixtureData = this.getFixtureResult(schema, user, promptType);
       if (!fixtureData) {
@@ -359,7 +409,9 @@ export class LlmService implements OnModuleInit {
       try {
         const data = this.anthropicClient
           ? await this.callAnthropic(schema, system, user)
-          : await this.callGemini(schema, system, user);
+          : this.geminiApiKey
+            ? await this.callGemini(schema, system, user)
+            : await this.callOpenRouter(schema, system, user);
         const latencyMs = Date.now() - startedAt;
         return {
           data,
@@ -409,6 +461,43 @@ export class LlmService implements OnModuleInit {
     throw new LlmUnavailableError(`LLM generation failed after ${attempts} attempt(s): ${finalMessage}`, lastError);
   }
 
+  private async callOpenRouter<T>(schema: ZodType<T>, system: string, user: string): Promise<T> {
+    if (!this.openRouterApiKey) throw new LlmUnavailableError('OpenRouter API key not configured');
+    const timeoutSignal = AbortSignal.timeout(20000);
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.openRouterApiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': this.config.get<string>('WEB_ORIGIN')?.split(',')[0] || 'http://localhost:3000',
+        'X-Title': 'PayPilot',
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [{ role: 'system', content: withSchemaInstruction(system, schema) }, { role: 'user', content: user }],
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+      }),
+      signal: timeoutSignal,
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      const error = new LlmUnavailableError(`OpenRouter API HTTP ${response.status}: ${detail}`);
+      (error as LlmUnavailableError & { status?: number }).status = response.status;
+      throw error;
+    }
+    const payload = (await response.json()) as OpenRouterResponse;
+    const content = payload.choices?.[0]?.message?.content;
+    const text = typeof content === 'string'
+      ? content.trim()
+      : Array.isArray(content) ? content.map((part) => part.text ?? '').join('').trim() : '';
+    if (!text) throw new LlmUnavailableError(payload.error?.message || 'OpenRouter response missing content');
+    const parsed = parseJsonResponse(text, 'OpenRouter');
+    const validated = schema.safeParse(parsed);
+    if (!validated.success) throw new LlmUnavailableError(`Schema validation failed on OpenRouter output: ${validated.error.message}`);
+    return validated.data;
+  }
+
   private async callGemini<T>(schema: ZodType<T>, system: string, user: string): Promise<T> {
     if (!this.geminiApiKey) {
       throw new LlmUnavailableError('Gemini API key not configured');
@@ -417,19 +506,10 @@ export class LlmService implements OnModuleInit {
     const timeoutSignal = AbortSignal.timeout(15000);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`;
 
-    const jsonSchema = toJsonSchema(schema);
-    const propKeys = schemaPropertyKeys(schema);
-    const schemaHint = propKeys.length
-      ? `\n\nCRITICAL OUTPUT SPECIFICATION: Return a JSON object with EXACTLY these top-level keys: ${JSON.stringify(propKeys)}.`
-      : '';
-
     const generationConfig: Record<string, unknown> = {
       responseMimeType: 'application/json',
       temperature: 0.1,
     };
-    if (jsonSchema) {
-      generationConfig.responseSchema = jsonSchema;
-    }
 
     const res = await fetch(url, {
       method: 'POST',
@@ -438,7 +518,7 @@ export class LlmService implements OnModuleInit {
         'x-goog-api-key': this.geminiApiKey,
       },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: `${system}${schemaHint}` }] },
+        systemInstruction: { parts: [{ text: withSchemaInstruction(system, schema) }] },
         contents: [{ role: 'user', parts: [{ text: user }] }],
         generationConfig,
       }),
@@ -462,12 +542,7 @@ export class LlmService implements OnModuleInit {
       throw new LlmUnavailableError('Gemini response missing candidate text');
     }
 
-    let parsedJson: unknown;
-    try {
-      parsedJson = JSON.parse(text);
-    } catch {
-      throw new LlmUnavailableError('Gemini response was not valid JSON');
-    }
+    const parsedJson = parseJsonResponse(text, 'Gemini');
 
     const validated = schema.safeParse(parsedJson);
     if (!validated.success) {

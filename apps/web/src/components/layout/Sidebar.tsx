@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Terminal,
+  LayoutDashboard,
   ShoppingBag,
   Handshake,
   Receipt,
@@ -25,12 +25,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Command Center', href: '/', icon: Terminal },
-  { label: 'Purchase Plans', href: '/plans', icon: ShoppingBag },
-  { label: 'Agent Negotiation', href: '/negotiation', icon: Handshake, badge: 'Live AI' },
+  { label: 'Overview', href: '/', icon: LayoutDashboard },
+  { label: 'Plans', href: '/plans', icon: ShoppingBag },
+  { label: 'Negotiation', href: '/negotiation', icon: Handshake, badge: 'AI' },
   { label: 'Transactions', href: '/transactions', icon: Receipt },
-  { label: 'Trust Timeline', href: '/timeline', icon: GitCommitHorizontal },
-  { label: 'Policy Center', href: '/policy', icon: ShieldCheck },
+  { label: 'Activity', href: '/timeline', icon: GitCommitHorizontal },
+  { label: 'Policies', href: '/policy', icon: ShieldCheck },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
 ];
 
@@ -47,12 +47,12 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
   return (
     <aside
       className={cn(
-        'flex flex-col h-full w-64 bg-[var(--paper-2)] border-r border-[var(--rule)] select-none z-40',
+        'flex flex-col h-full w-64 bg-[var(--card)] border-r border-[var(--rule)] select-none z-40',
         className,
       )}
     >
       <div className="flex items-center gap-3 px-6 h-16 border-b border-[var(--rule)]">
-        <div className="relative flex items-center justify-center w-10 h-10 border border-[var(--ledger)] text-[var(--ledger)]">
+        <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-[var(--ledger)] text-[var(--ledger-ink)]">
           <svg viewBox="0 0 32 32" className="w-6 h-6" aria-hidden="true">
             <path d="M5 18 18 5l9 9-13 13-3-7-6-2Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
             <path d="m8 16 8 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -60,19 +60,16 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
         </div>
         <div>
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-lg tracking-tight text-[var(--ink)]">PayPilot</span>
-            <span className="text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 border border-[var(--rule)] text-[var(--ink-3)]">
-              Flight desk
-            </span>
+            <span className="font-semibold text-lg tracking-tight text-[var(--ink)]">PayPilot</span>
           </div>
-          <p className="text-[11px] text-[var(--ink-3)]">Permissioned purchase log</p>
+          <p className="text-[11px] text-[var(--ink-3)]">Autonomous spend management</p>
         </div>
       </div>
 
       {/* Nav List */}
       <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-3)]">
-        Desk
+          WORKSPACE
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -117,14 +114,13 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
         })}
       </div>
 
-      {/* Agent Governance Badge */}
-      <div className="p-4 mx-3 mb-3 bg-[var(--paper)] border border-[var(--rule)]">
+      <div className="p-4 mx-3 mb-3 rounded-xl bg-[var(--paper)] border border-[var(--rule)]">
         <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[var(--ink)]">
           <Sparkles className="w-3.5 h-3.5 text-[var(--brass)]" />
-          <span>Rules on the record</span>
+          <span>Spend controls are on</span>
         </div>
         <p className="text-[11px] text-[var(--ink-3)] leading-relaxed">
-          The ledger records what happened. Spending limits are enforced before checkout.
+          Every purchase follows your approval rules and spending limits.
         </p>
       </div>
 

@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PayPilot Web
 
-## Getting Started
+Next.js frontend for PayPilot’s purchase planning, approval, policy, transaction, and audit workflows.
 
-First, run the development server:
+For full-stack setup and environment modes, see the [project README](../../README.md).
+
+## Local development
+
+From the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp apps/web/.env.example apps/web/.env.local
+pnpm install
+pnpm --filter web dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The frontend runs on port `3000`. Start PostgreSQL and the API separately; the web app forwards `/api/*` requests to the API configured by `NEXT_PUBLIC_API_URL`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For a local mock-payment demo, set `NEXT_PUBLIC_PAYPAL_CLIENT_ID=sb`. For PayPal Sandbox checkout, use the client ID that matches the API credentials.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Main routes
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/welcome` — demo entry and sign-in links
+- `/` — purchase planning and recent activity
+- `/plans` — saved purchase plans
+- `/transactions` — payment and ledger history
+- `/policy` — spending rules and autonomy settings
+- `/timeline` — verifiable activity history
+- `/analytics` — spend and governance summaries

@@ -43,6 +43,7 @@ function PlanDetailContent() {
     violations: string[];
   } | null>(null);
   const [swappingProductId, setSwappingProductId] = React.useState<string | null>(null);
+  const [productImageFailed, setProductImageFailed] = React.useState(false);
 
   const [syncedPlanId, setSyncedPlanId] = React.useState<string | null>(null);
   const [mountTime] = React.useState(() => Date.now());
@@ -274,13 +275,15 @@ function PlanDetailContent() {
               <div className="p-6 flex flex-col sm:flex-row gap-6">
                 {/* Product Image / Placeholder */}
                 <div className="w-full sm:w-44 h-44 rounded-[var(--radius)] bg-[var(--paper)] border border-[var(--rule)] flex items-center justify-center shrink-0 overflow-hidden relative">
-                  {product?.imageUrl ? (
+                  {product?.imageUrl && !productImageFailed ? (
                     <Image
                       src={product.imageUrl}
                       alt={primaryItem?.productName || 'Product'}
                       width={176}
                       height={176}
+                      unoptimized
                       className="object-cover w-full h-full"
+                      onError={() => setProductImageFailed(true)}
                     />
                   ) : (
                     <Package className="w-12 h-12 text-[var(--ink-3)]" />

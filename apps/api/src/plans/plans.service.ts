@@ -182,10 +182,10 @@ export class PlansService {
     const policyRules: PolicyRules = {
       currency: policy.currency,
       autonomyMode: policy.autonomyMode as any,
-      maxTransactionAmount: policy.maxTransactionAmount,
-      dailySpendingLimit: policy.dailySpendingLimit,
-      monthlySpendingLimit: policy.monthlySpendingLimit,
-      requireApprovalAbove: policy.requireApprovalAbove,
+      maxTransactionAmount: policy.maxTransactionAmount == null ? null : Number(policy.maxTransactionAmount),
+      dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
+      monthlySpendingLimit: policy.monthlySpendingLimit == null ? null : Number(policy.monthlySpendingLimit),
+      requireApprovalAbove: policy.requireApprovalAbove == null ? null : Number(policy.requireApprovalAbove),
       allowAutoExecute: policy.allowAutoExecute,
       allowedCategories: policy.allowedCategories,
       blockedCategories: policy.blockedCategories,
@@ -196,13 +196,15 @@ export class PlansService {
     const category = firstItem?.product?.category ?? plan.intent?.category ?? null;
 
     // Check catalog price at creation vs current (kept as Decimal strings for precision)
-    const catalogPriceAtCreation = firstItem ? firstItem.unitPrice : null;
-    const currentCatalogPrice = firstItem?.product?.price ?? catalogPriceAtCreation;
+    const catalogPriceAtCreation = firstItem ? Number(firstItem.unitPrice) : null;
+    const currentCatalogPrice = firstItem?.product?.price != null
+      ? Number(firstItem.product.price)
+      : catalogPriceAtCreation;
 
     // 1. Policy Evaluation
     const policyResult: PolicyEvaluationResult = evaluate(
       {
-        total: plan.total,
+        total: Number(plan.total),
         currency: plan.currency,
         category,
         expiresAt: plan.expiresAt,
@@ -212,7 +214,7 @@ export class PlansService {
             ? {
                 stock: i.product.stock,
                 status: i.product.status,
-                price: i.product.price,
+                price: Number(i.product.price),
               }
             : null,
         })),
@@ -225,7 +227,7 @@ export class PlansService {
     // 2. Risk Evaluation
     const riskResult: RiskAssessmentResult = assess(
       {
-        total: plan.total,
+        total: Number(plan.total),
         category,
         quantity: firstItem?.quantity || 1,
         catalogPriceAtCreation,
@@ -237,7 +239,7 @@ export class PlansService {
         typicalSpendAverage: metrics.typicalSpendAverage,
         pastPaymentsCount: metrics.pastPaymentsCount,
         dailySpentSoFar: metrics.dailySpent,
-        dailySpendingLimit: policy.dailySpendingLimit,
+        dailySpendingLimit: policy.dailySpendingLimit == null ? null : Number(policy.dailySpendingLimit),
         purchasedCategories: metrics.purchasedCategories,
         recentPaymentsIn10Min: metrics.recentPaymentsIn10Min,
       },

@@ -65,7 +65,7 @@ describe('LlmService', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('emits fallback metadata (live+fallback) after retryable failure when fixture is available in demo mode', async () => {
+  it('uses deterministic fixtures for supported demo prompts without calling a provider', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('network timeout'));
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -73,12 +73,11 @@ describe('LlmService', () => {
     const prompt = 'I need a developer monitor under $250. Prioritize text clarity and value.';
     const result = await service.generateJsonWithMeta(z.any(), 'system', prompt, 'intent');
 
-    expect(result.meta.mode).toBe('live+fallback');
-    expect(result.meta.fallbackUsed).toBe(true);
+    expect(result.meta.mode).toBe('fixture');
+    expect(result.meta.fallbackUsed).toBe(false);
     expect(result.meta.provider).toBe('fixture');
-    expect(result.meta.attempts).toBe(3);
-    expect(result.meta.fallbackReason).toContain('network timeout');
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(result.meta.attempts).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('throws on schema validation failure without fallback in live-required mode', async () => {

@@ -11,7 +11,7 @@ export interface AgentActivity {
 
 interface IntentStreamResult {
   intent?: unknown;
-  plan?: { id: string };
+  plan?: { id: string; status?: string };
   policyEvaluation?: { decision: string; violations?: string[] };
   riskAssessment?: { level?: string; score?: number };
 }

@@ -41,7 +41,7 @@ $$\text{\bf User Intent} \longrightarrow \text{\bf AI Planning} \longrightarrow 
 6. **Buyer ↔ Merchant Autonomous Negotiation**: Multi-round concession game between buyer and merchant agents. Enforces strict buyer ceilings and secret server-side merchant reserve floors.
 7. **PayPal Orders v2 & Webhook Verification**: Idempotent order creation (`PayPal-Request-Id`), capture tracking, and authoritative signature verification via PayPal's REST API.
 8. **Verifiable Trust Timeline**: Real-time event stream (`/api/timeline/stream`) tracking every decision node with inspectable raw JSON evidence.
-9. **Dual Operation Modes**: Connects live to PayPal Sandbox, with a deterministic zero-key `DEMO_MODE=true` offline fallback and webhook simulator.
+9. **Demo and Sandbox Modes**: Uses fixture-backed example prompts and mocked PayPal orders for demos; can call an LLM provider and PayPal Sandbox when credentials are configured.
 
 ---
 
@@ -89,13 +89,13 @@ flowchart TD
 | Component | Technology | Rationale |
 |---|---|---|
 | **Frontend** | Next.js 16 (App Router), React 19, Tailwind CSS v4 | Server Components, Proxy route protection, zero-CORS rewrites |
-| **UI Primitives** | Radix UI, Framer Motion, Lucide Icons, Sonner | Premium dark navy theme, smooth physics, accessible keyboard controls |
+| **UI Primitives** | Radix UI, Framer Motion, Lucide Icons, Sonner | Responsive workspace UI with accessible controls |
 | **Data Grids & Charts** | AG Grid Community v36, Recharts | High-performance sortable transaction ledgers and spend charts |
 | **Backend Gateway** | NestJS 12, TypeScript (ESM) | Modular micro-architecture, dependency injection, strict validation |
 | **Database & ORM** | PostgreSQL 16+, Prisma 7, `@prisma/adapter-pg` | Relational consistency, double-entry ledgers, unique event constraints |
 | **Authentication** | Better Auth | Secure session cookies, route protection, 1-Click Demo login |
 | **Payment Rails** | PayPal Orders v2 REST API + Webhooks | Idempotent order creation, Smart Buttons, cryptographic verification |
-| **Validation & Testing** | Zod 4, Vitest 4, Playwright | End-to-end schema validation, 402 passing unit tests, smoke tests |
+| **Validation & Testing** | Zod 4, Vitest 4, Playwright | Runtime schema validation, unit tests, and browser smoke tests |
 
 ---
 
@@ -137,150 +137,153 @@ PayPilot explicitly isolates generative intelligence to advisory roles:
 
 ---
 
-## 🚀 Quick Start Guide
+## 🚀 Quick Start
 
 ### Prerequisites
-- **Node.js**: v20+ (Node.js 24 recommended)
-- **Package Manager**: `pnpm` (`npm install -g pnpm`)
-- **Docker**: For running local PostgreSQL (`docker compose up -d`)
 
-### 1. Clone & Configure Environment
+- Node.js 24 or newer (required by the workspace)
+- pnpm 12.16.1 (the version in `package.json`)
+- Docker with Compose, for local PostgreSQL
+
+### 1. Create the app environment files
+
+Run these commands from the repository root:
+
 ```bash
-git clone https://github.com/your-username/paypilot.git
-cd paypilot
-
-# Copy root environment template
-cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
 ```
 
-### 2. Install Dependencies
+The API reads `apps/api/.env`; the web app reads `apps/web/.env.local`. The root `.env.example` is a reference only. Do not put server secrets in the web environment file. Before starting, set a private `BETTER_AUTH_SECRET` of at least 32 characters in `apps/api/.env`. For a local demo, set `NEXT_PUBLIC_PAYPAL_CLIENT_ID=sb` in the web env file.
+
+### 2. Start and prepare the database
+
 ```bash
 pnpm install
-```
-
-### 3. Start Database & Seed Catalog
-```bash
-# Start local PostgreSQL container
 pnpm db:up
-
-# Run Prisma database migrations
 pnpm db:migrate
-
-# Seed 17 fictional catalog items and initial test users
 pnpm db:seed
 ```
 
-### 4. Run Development Servers
-```bash
-# Starts both NestJS API (port 4000) and Next.js Web (port 3000)
-pnpm dev
-```
-Open **`http://localhost:3000`** in your browser.
+This starts PostgreSQL, applies the Prisma migrations, and seeds the demo user and product catalog. Keep Docker running while you use PayPilot.
 
----
-
-## 🎮 Demo Credentials & Quick Test
-
-## Run it in 5 minutes
+### 3. Start the apps
 
 ```bash
-pnpm install
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env.local
-pnpm db:up && pnpm db:migrate && pnpm db:seed
 pnpm dev
 ```
 
-Open `http://localhost:3000/welcome` and choose **Continue as Demo User**. The API reads
-`apps/api/.env`; the web app reads `apps/web/.env.local`. Set
-`NEXT_PUBLIC_API_URL` to the API origin and use `NEXT_PUBLIC_PAYPAL_CLIENT_ID=sb` for
-the PayPal sandbox UI.
+Open [http://localhost:3000/welcome](http://localhost:3000/welcome) and select **Launch Demo**. The API runs on port `4000`; the web app runs on port `3000`.
 
-## What is real vs simulated
+If you prefer separate terminals, run `pnpm --filter api start:dev` and `pnpm --filter web dev` from the repository root.
 
-| Capability | Default demo | With credentials |
-|---|---|---|
-| LLM planning | Deterministic fixtures | Provider API (`LLM_FORCE_LIVE=true`) |
-| PayPal orders/capture | Local mock only when credentials are absent | PayPal Sandbox Orders v2 |
-| Webhook confirmation | Dev simulator when enabled outside production | Verified PayPal webhook |
-| Policy/risk/ledger | Real database and deterministic rules | Same |
+### Demo login
 
-`GET /health/config` exposes non-secret mode indicators used by the web status chips.
+The seeded account is:
 
-PayPilot includes pre-seeded demo accounts with active policies:
+| Email | Password |
+|---|---|
+| `demo@paypilot.dev` | `Password123!` |
 
-| Account | Email | Password | Role |
-|---|---|---|---|
-| **Demo User** | `demo@paypilot.dev` | `Password123!` | Procurement user (maxTx \$500, daily \$600, monthly \$1500) |
+You can also use the **Launch Demo** button to sign in without entering the credentials.
 
-> **Tip**: Click the prominent **"Continue as Demo User"** button on the `/welcome` or `/login` screen for 1-click sign-in without typing credentials.
+## ⚙️ Demo, OpenRouter, and PayPal Sandbox modes
 
----
+PayPilot has separate switches for AI provider calls and PayPal behavior. `DEMO_MODE` permits mocked PayPal behavior when valid PayPal credentials are absent; `LLM_FORCE_LIVE` controls whether an AI provider call is required. This lets you exercise OpenRouter while keeping payments mocked.
 
-## 🔧 Environment Variables Reference
+### Demo mode (no provider key required for example prompts)
 
-### `apps/api/.env` (Backend)
+In `apps/api/.env`:
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `BETTER_AUTH_URL` | ✅ | Full API base URL (e.g. `http://localhost:4000`) |
-| `BETTER_AUTH_SECRET` | ✅ | 32+ char secret for session signing |
-| `DEMO_MODE` | — | `"true"` for offline mock mode (no API keys needed) |
-| `LLM_FORCE_LIVE` | — | `"true"` disables fixtures and requires a live LLM key |
-| `LLM_PROVIDER` | — | `anthropic` or `gemini` |
-| `ENABLE_WEBHOOK_SIMULATOR` | — | `"true"` enables the dev simulator outside production |
-| `DEMO_USER_PASSWORD` | — | Password for seeded demo user (default: `Password123!`) |
-| `ANTHROPIC_API_KEY` | Live only | Anthropic API key for Claude LLM |
-| `GEMINI_API_KEY` | Live only | Google Gemini API key (alternative to Anthropic) |
-| `LLM_MODEL` | — | Model name (defaults to `claude-sonnet-5-5` for Anthropic) |
-| `PAYPAL_CLIENT_ID` | Live only | PayPal Sandbox REST API client ID |
-| `PAYPAL_CLIENT_SECRET` | Live only | PayPal Sandbox REST API secret |
-| `PAYPAL_WEBHOOK_ID` | Live only | PayPal Webhook ID from Developer Dashboard |
-| `WEB_ORIGIN` | Prod only | Comma-separated trusted origins (e.g. `https://paypilot.onrender.com`) |
-| `PORT` | — | API listening port (default: `4000`) |
+```env
+DEMO_MODE=true
+LLM_FORCE_LIVE=false
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=
+LLM_MODEL=openai/gpt-4o-mini
+```
 
-### `apps/web/.env.local` (Frontend)
+The built-in example prompts use deterministic fixtures, so the demo does not depend on an LLM provider. Without an API key, arbitrary prompts may not be supported. PayPal orders use the local mock when demo mode is on and valid PayPal credentials are not configured. If valid PayPal Sandbox credentials are present, the app calls that Sandbox account. To use the webhook simulator during local development, set `ENABLE_WEBHOOK_SIMULATOR=true`.
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | ✅ | Backend API base URL (e.g. `http://localhost:4000`) |
-| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | ✅ | PayPal Client ID for Smart Buttons SDK (`sb` for sandbox) |
+### Live OpenRouter AI with mocked payments
 
-> Copy from examples: `cp apps/api/.env.example apps/api/.env && cp apps/web/.env.example apps/web/.env.local`
+Add your key to **`apps/api/.env`** only; do not put it in `apps/web/.env.local` or expose it in frontend code. Then use:
 
----
+```env
+DEMO_MODE=true
+LLM_FORCE_LIVE=true
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=your_openrouter_api_key
+LLM_MODEL=openai/gpt-4o-mini
+```
+
+`LLM_MODEL` must be an OpenRouter model ID in `provider/model` form. Restart the API after changing its environment. `DEMO_MODE=true` still allows mock PayPal checkout when valid PayPal credentials are absent. For a mock-payment test, leave PayPal credentials unset or at their example placeholders; keep the OpenRouter key only in the API env file.
+
+You can instead set `LLM_PROVIDER=gemini` with `GEMINI_API_KEY` or `LLM_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`. Use a model ID supported by that provider.
+
+### PayPal Sandbox checkout
+
+For checkout against PayPal Sandbox, configure `DEMO_MODE=false`, keep `PAYPAL_API_BASE_URL=https://api-m.sandbox.paypal.com`, and provide the Sandbox app credentials and webhook ID in `apps/api/.env`. Set `LLM_FORCE_LIVE=true` and configure one LLM provider as well, because non-demo mode requires a live LLM. In `apps/web/.env.local`, set `NEXT_PUBLIC_PAYPAL_CLIENT_ID` to the client ID for the same Sandbox app. Follow [the PayPal setup guide](docs/PAYPAL_SETUP.md) to create the app and register its webhook.
+
+This setup uses PayPal Sandbox. Production PayPal credentials and production money movement are outside this local development guide.
+
+### Check app configuration
+
+With the API running, open [http://localhost:4000/health](http://localhost:4000/health) to check API availability and [http://localhost:4000/health/config](http://localhost:4000/health/config) to view non-secret mode indicators.
+
+## 🔧 Environment variables
+
+### API: `apps/api/.env`
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `BETTER_AUTH_URL` | API origin, usually `http://localhost:4000` |
+| `BETTER_AUTH_SECRET` | Secret used to sign authentication sessions (32+ characters) |
+| `DEMO_MODE` | `true` permits PayPal mock behavior when valid PayPal credentials are absent; `false` requires configured PayPal credentials |
+| `LLM_FORCE_LIVE` | `true` requires a provider call, including for built-in example prompts |
+| `LLM_PROVIDER` | `openrouter`, `gemini`, or `anthropic` |
+| `LLM_MODEL` | Provider model ID; OpenRouter IDs use `provider/model` form |
+| `OPENROUTER_API_KEY` | OpenRouter key; keep this in the API env file only |
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Alternative provider keys, depending on `LLM_PROVIDER` |
+| `PAYPAL_API_BASE_URL` | Use the Sandbox endpoint for local checkout testing |
+| `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | PayPal app credentials for the configured environment |
+| `PAYPAL_WEBHOOK_ID` | Webhook ID registered for the PayPal app |
+| `PAYPAL_CURRENCY` | Currency used for PayPal orders (defaults to `USD`) |
+| `ENABLE_WEBHOOK_SIMULATOR` | Set `true` to enable the dev simulator outside production |
+| `PORT` / `WEB_ORIGIN` | API port and allowed web origins |
+| `DEMO_USER_PASSWORD` | Password for the seeded demo account |
+
+### Web: `apps/web/.env.local`
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | API origin, usually `http://localhost:4000` |
+| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | PayPal client ID used by the browser SDK (`sb` for the local demo, or the matching Sandbox app ID for Sandbox checkout) |
+| `NEXT_PUBLIC_PAYPAL_CURRENCY` | Currency displayed by the browser SDK, usually `USD` |
+
+Only values intended for browser use belong in `NEXT_PUBLIC_*` variables. Never place OpenRouter, PayPal secret, or Better Auth secret keys there.
+
+## 🧪 Checks
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm test:e2e
+```
+
+`pnpm test:e2e` expects the API, database, and web app configuration to be available. For a quick API availability check, run `pnpm smoke` while the API is running.
 
 ## 🌐 PayPal Sandbox Setup & Webhooks
 
 For live testing with real PayPal Sandbox accounts, follow our detailed guide:
-👉 **[Read docs/PAYPAL_SETUP.md](file:///home/nulltrace/Documents/Projects/PayPal%20Hackathon/PayPilot/docs/PAYPAL_SETUP.md)**
+👉 **[Read the PayPal setup guide](docs/PAYPAL_SETUP.md)**
 
 ### Running Without PayPal Keys (`DEMO_MODE=true`)
-If you don't have PayPal developer credentials handy, leave `DEMO_MODE=true` in `.env`. PayPilot will:
+If you do not have PayPal developer credentials, keep `DEMO_MODE=true` in `apps/api/.env`. PayPilot will:
 1. Provide mock PayPal orders and mock capture IDs.
-2. Activate the **Dev Webhook Simulator** on `/payments/[id]`, allowing you to simulate `COMPLETED`, `DENIED`, `REVERSED`, and duplicate webhook events directly from the UI.
-
----
-
-## 🧪 Running the Test Suite
-
-```bash
-# Run all unit and state machine tests across packages
-pnpm test
-
-# Run strict TypeScript typecheck (0 errors, no 'any')
-pnpm typecheck
-
-# Run lint checks
-pnpm lint
-
-# Run Playwright end-to-end smoke test
-pnpm test:e2e
-
-# Run the API smoke script against a running API
-pnpm smoke
-```
+2. Let you enable the **Dev Webhook Simulator** by setting `ENABLE_WEBHOOK_SIMULATOR=true` in `apps/api/.env`; it can simulate `COMPLETED`, `DENIED`, `REVERSED`, and duplicate webhook events during local development.
 
 ---
 

@@ -70,8 +70,8 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         {/* Sandbox Badge */}
         <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 border border-[var(--rule)] text-[var(--ink-2)] text-xs font-medium">
           <ShieldAlert className="w-3.5 h-3.5 text-[var(--amber)] shrink-0" />
-          <span className="hidden sm:inline">Flight desk</span>
-          <span className="hidden sm:inline text-[var(--ink-3)] text-[11px]">— sandbox ledger</span>
+          <span className="hidden sm:inline">Sandbox mode</span>
+          <span className="hidden sm:inline text-[var(--ink-3)] text-[11px]">— test payments</span>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
           className="hidden sm:inline-flex items-center gap-1.5 border border-[var(--rule)] px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-[var(--ink-3)] hover:text-[var(--ink)]"
           aria-label="Toggle desk theme"
         >
-          {theme === 'day' ? 'Night desk' : 'Day desk'}
+          {theme === 'day' ? 'Dark mode' : 'Light mode'}
         </button>
         <div className="hidden lg:flex items-center gap-1.5">
           <Badge
@@ -143,7 +143,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
             <Coins className="w-2.5 h-2.5 text-[var(--brass)] absolute" />
           </div>
           <div>
-            <div className="hidden sm:block text-[10px] text-[var(--ink-3)] leading-none">Daily Left</div>
+            <div className="hidden sm:block text-[10px] text-[var(--ink-3)] leading-none">Daily remaining</div>
             <div className="font-semibold text-[var(--ink)] group-hover:text-[var(--brass)] transition-colors">
               {formatCurrency(dailyRemaining)}
             </div>

@@ -318,6 +318,7 @@ export default function AnalyticsPage() {
           <div className="h-96 w-full rounded-[var(--radius)] overflow-hidden ">
             <div className="ag-theme-quartz-dark w-full h-full">
               <AgGridReact
+                theme="legacy"
                 rowData={activities || []}
                 columnDefs={activityColumnDefs}
                 pagination={true}

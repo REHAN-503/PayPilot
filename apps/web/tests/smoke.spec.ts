@@ -13,7 +13,7 @@ test.describe('PayPilot Autonomous Procurement Smoke Test', () => {
 
     // 3. Arrive at Command Center
     await page.waitForURL('/', { timeout: 10000 });
-    await expect(page.locator('h1').first()).toContainText('Autonomous Procurement Center');
+    await expect(page.locator('h1').first()).toContainText('Plan a purchase');
 
     // 4. Click Prompt 1 chip: Developer Monitor
     const prompt1Chip = page.locator('button:has-text("Developer Monitor")').first();

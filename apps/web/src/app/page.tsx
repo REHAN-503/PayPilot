@@ -35,7 +35,7 @@ function LiveProductCard({ product }: { product: Product }) {
 
   return (
     <Card className="overflow-hidden border-[var(--rule)] bg-[var(--card)]/70">
-      <div className="relative aspect-square bg-[var(--paper)]">
+      <div className="relative aspect-[4/3] bg-[var(--paper)]">
         {product.imageUrl && !imageFailed ? (
           <Image
             src={product.imageUrl}
@@ -171,7 +171,7 @@ export default function CommandCenterPage() {
         await stream(textToPlan, {
           onActivity: applyActivity,
           onResult: (res) => {
-            if (res.policyEvaluation?.decision === 'BLOCK') {
+            if (res.policyEvaluation?.decision === 'BLOCK' && (!res.plan || res.plan.status === 'REJECTED')) {
               updateStepStatus(
                 'policy',
                 'blocked',
@@ -179,8 +179,17 @@ export default function CommandCenterPage() {
               );
               return;
             }
-            updateStepStatus('ready', 'completed', 'Plan ready for user authorization');
-            toast.success('Procurement Plan Created!', { id: 'plan-progress' });
+            updateStepStatus(
+              'ready',
+              'completed',
+              res.policyEvaluation?.decision === 'BLOCK'
+                ? 'The first option was blocked; a compliant alternative is ready.'
+                : 'Plan ready for user authorization',
+            );
+            toast.success(
+              res.policyEvaluation?.decision === 'BLOCK' ? 'Compliant alternative ready' : 'Procurement Plan Created!',
+              { id: 'plan-progress' },
+            );
             if (res.plan?.id) {
               router.push(`/plans/${res.plan.id}`);
             }
@@ -194,14 +203,20 @@ export default function CommandCenterPage() {
           description: 'Streaming is unavailable; using the standard planning request.',
         });
         const res = await api.createIntent(textToPlan);
-        if (res.policyEvaluation?.decision === 'BLOCK') {
+        if (res.policyEvaluation?.decision === 'BLOCK' && (!res.plan || res.plan.status === 'REJECTED')) {
           updateStepStatus(
             'policy',
             'blocked',
             res.policyEvaluation.violations?.[0] || 'Budget exceeded',
           );
         } else if (res.plan) {
-          updateStepStatus('ready', 'completed', 'Plan ready for user authorization');
+          updateStepStatus(
+            'ready',
+            'completed',
+            res.policyEvaluation?.decision === 'BLOCK'
+              ? 'The first option was blocked; a compliant alternative is ready.'
+              : 'Plan ready for user authorization',
+          );
           setActivePlan(res.plan);
           router.push(`/plans/${res.plan.id}`);
         }
@@ -228,47 +243,18 @@ export default function CommandCenterPage() {
   return (
     <DashboardShell>
       <div className="space-y-8">
-        <section className="space-y-4">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-[var(--ink)]">Live Product Catalog</h2>
-              <p className="text-xs text-[var(--ink-3)]">
-                Products and availability are loaded from the API database.
-              </p>
-            </div>
-            {catalog?.pagination.total !== undefined && (
-              <span className="text-xs text-[var(--ink-3)]">{catalog.pagination.total} products</span>
-            )}
-          </div>
-          {isCatalogLoading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="aspect-[3/4] animate-pulse rounded-2xl bg-[var(--card)]" />
-              ))}
-            </div>
-          ) : isCatalogError ? (
-            <div className="rounded-2xl border border-[var(--vermilion)]/30 bg-[var(--vermilion)]/5 p-4 text-sm text-[var(--vermilion)]">
-              The live product catalog is unavailable. Try again after the API is running.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {catalog?.data.map((product) => <LiveProductCard key={product.id} product={product} />)}
-            </div>
-          )}
-        </section>
-
         {/* Hero Section & Goal Input */}
         <div className="desk-enter space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-[var(--ink)] tracking-tight flex items-center gap-2.5">
-                Autonomous Procurement Center
+                Plan a purchase
                 <Badge variant="default" className="py-0.5 px-2 text-[10px]">
                   Agent v2.0
                 </Badge>
               </h1>
               <p className="text-xs sm:text-sm text-[var(--ink-3)] mt-1">
-                Natural-language intent parsing with deterministic policy bounds and PayPal smart execution.
+                Describe what you need. Review a verified option, check the spending rules, and approve before payment.
               </p>
             </div>
           </div>
@@ -286,7 +272,7 @@ export default function CommandCenterPage() {
               {/* Chips container */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-3)] shrink-0">
-                  Demo Chips:
+                  Try an example:
                 </span>
                 {DEMO_PROMPTS.map((prompt) => (
                   <button
@@ -319,7 +305,7 @@ export default function CommandCenterPage() {
                 ) : (
                   <>
                     <Send className="w-4 h-4 mr-2" />
-                    Plan It
+                    Create plan
                   </>
                 )}
               </Button>
@@ -409,10 +395,10 @@ export default function CommandCenterPage() {
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                    <Link href={`/plans/${latestPlan.id}`} className="w-full sm:flex-1">
-                      <Button variant="outline" className="w-full">
-                        Inspect Full Plan & Tradeoffs
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <Link href={`/plans/${latestPlan.id}`} className="min-w-[180px] flex-1">
+                      <Button variant="outline" className="w-full text-xs px-3">
+                        Review plan
                         <ArrowRight className="w-4 h-4 ml-1.5" />
                       </Button>
                     </Link>
@@ -421,14 +407,14 @@ export default function CommandCenterPage() {
                       <Button
                         variant="glow"
                         onClick={() => setApprovalSheetOpen(true)}
-                        className="w-full sm:flex-1 font-semibold"
+                        className="min-w-[180px] flex-1 font-semibold"
                       >
                         <ShieldCheck className="w-4 h-4 mr-2" />
                         Authorize & Pay
                       </Button>
                     )}
 
-                    <Link href={`/negotiation?planId=${latestPlan.id}`} className="w-full sm:w-auto">
+                    <Link href={`/negotiation?planId=${latestPlan.id}`} className="min-w-[150px] flex-1">
                       <Button variant="accent" className="w-full">
                         Negotiate Price
                       </Button>
@@ -441,7 +427,7 @@ export default function CommandCenterPage() {
                 <ShoppingBag className="w-12 h-12 text-[var(--ink-3)] mb-3" />
                 <h3 className="text-base font-semibold text-[var(--ink-2)]">No active plan generated yet</h3>
                 <p className="text-xs text-[var(--ink-3)] max-w-sm mt-1">
-                  Type your procurement requirement in the goal box above or click a demo chip to plan autonomously.
+                  Describe a purchase above or choose an example to create your first plan.
                 </p>
               </div>
             )}
@@ -495,6 +481,34 @@ export default function CommandCenterPage() {
 
           <TrustTimeline events={timelineData?.events?.slice(-6) || []} isLive={true} />
         </div>
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-[var(--ink)]">Browse the catalog</h2>
+              <p className="text-xs text-[var(--ink-3)]">
+                Products and availability are loaded from the API database.
+              </p>
+            </div>
+            {catalog?.pagination.total !== undefined && (
+              <span className="text-xs text-[var(--ink-3)]">{catalog.pagination.total} products</span>
+            )}
+          </div>
+          {isCatalogLoading ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="aspect-[3/4] animate-pulse rounded-2xl bg-[var(--card)]" />
+              ))}
+            </div>
+          ) : isCatalogError ? (
+            <div className="rounded-2xl border border-[var(--vermilion)]/30 bg-[var(--vermilion)]/5 p-4 text-sm text-[var(--vermilion)]">
+              The live product catalog is unavailable. Try again after the API is running.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {catalog?.data.map((product) => <LiveProductCard key={product.id} product={product} />)}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Approval Sheet Modal */}
