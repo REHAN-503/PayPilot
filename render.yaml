@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     region: ohio
-    buildCommand: pnpm install && pnpm --filter api build
+    buildCommand: pnpm install && pnpm --filter api exec prisma generate --schema prisma/schema.prisma && pnpm --filter api build
     startCommand: pnpm --filter api start:prod
     healthCheckPath: /health
     envVars:
