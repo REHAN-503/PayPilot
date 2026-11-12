@@ -57,7 +57,12 @@ export class NegotiationService {
     private readonly llmService: LlmService,
   ) {}
 
-  async startNegotiation(userId: string, planId: string, targetDiscountPercent?: number): Promise<SafeNegotiationResponse> {
+  async startNegotiation(
+    userId: string,
+    planId: string,
+    targetDiscountPercent?: number,
+    isDemoUser = false,
+  ): Promise<SafeNegotiationResponse> {
     const plan = await this.prisma.purchasePlan.findFirst({
       where: { id: planId, userId },
       include: {
@@ -187,6 +192,7 @@ export class NegotiationService {
         context,
         roundProposals,
         product?.name || primaryItem.productName,
+        isDemoUser,
       );
 
       // Deterministic validation & guards
@@ -260,6 +266,7 @@ export class NegotiationService {
         context,
         roundProposals,
         product?.name || primaryItem.productName,
+        isDemoUser,
       );
 
       // Deterministic validation & guards
@@ -621,8 +628,14 @@ export class NegotiationService {
     context: NegotiationContext,
     history: RoundProposal[],
     productName: string,
+    isDemoUser: boolean,
   ): Promise<{ action: any; price: number; rationale: string }> {
-    const liveRequired = this.llmService.isForceLive() || this.llmService.isLiveRequired();
+    if (isDemoUser) {
+      return generateDeterministicRound(roundNumber, speaker, context, history);
+    }
+
+    const liveRequired =
+      !isDemoUser || this.llmService.isForceLive() || this.llmService.isLiveRequired();
     const canUseLive = this.llmService.hasLiveProvider();
 
     if (!canUseLive) {

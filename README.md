@@ -187,45 +187,21 @@ The seeded account is:
 
 You can also use the **Launch Demo** button to sign in without entering the credentials.
 
-## ⚙️ Demo, OpenRouter, and PayPal Sandbox modes
+## ⚙️ Demo accounts, live AI, and PayPal Sandbox
 
-PayPilot has separate switches for AI provider calls and PayPal behavior. `DEMO_MODE` permits mocked PayPal behavior when valid PayPal credentials are absent; `LLM_FORCE_LIVE` controls whether an AI provider call is required. This lets you exercise OpenRouter while keeping payments mocked.
+AI mode is selected from the authenticated account. **Try the demo** signs in as `demo@paypilot.dev`; that account uses the built-in prompt fixtures and deterministic negotiation, with no AI provider call. Regular accounts use the configured live LLM provider. There is no need to change demo flags when users switch accounts. Demo fixtures cover the built-in example prompts; configure a provider for arbitrary live prompts.
 
-### Demo mode (no provider key required for example prompts)
-
-In `apps/api/.env`:
+Configure the provider once in `apps/api/.env`. For OpenRouter:
 
 ```env
-DEMO_MODE=true
-LLM_FORCE_LIVE=false
-LLM_PROVIDER=openrouter
-OPENROUTER_API_KEY=
-LLM_MODEL=openai/gpt-4o-mini
-```
-
-The built-in example prompts use deterministic fixtures, so the demo does not depend on an LLM provider. Without an API key, arbitrary prompts may not be supported. PayPal orders use the local mock when demo mode is on and valid PayPal credentials are not configured. If valid PayPal Sandbox credentials are present, the app calls that Sandbox account. To use the webhook simulator during local development, set `ENABLE_WEBHOOK_SIMULATOR=true`.
-
-### Live OpenRouter AI with mocked payments
-
-Add your key to **`apps/api/.env`** only; do not put it in `apps/web/.env.local` or expose it in frontend code. Then use:
-
-```env
-DEMO_MODE=true
-LLM_FORCE_LIVE=true
 LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=your_openrouter_api_key
 LLM_MODEL=openai/gpt-4o-mini
 ```
 
-`LLM_MODEL` must be an OpenRouter model ID in `provider/model` form. Restart the API after changing its environment. `DEMO_MODE=true` still allows mock PayPal checkout when valid PayPal credentials are absent. For a mock-payment test, leave PayPal credentials unset or at their example placeholders; keep the OpenRouter key only in the API env file.
+Keep the provider key in the API environment only. `LLM_MODEL` must be an OpenRouter model ID in `provider/model` form. `LLM_FORCE_LIVE` can remain enabled for deployment-wide operations that require a provider.
 
-You can instead set `LLM_PROVIDER=gemini` with `GEMINI_API_KEY` or `LLM_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`. Use a model ID supported by that provider.
-
-### PayPal Sandbox checkout
-
-For checkout against PayPal Sandbox, configure `DEMO_MODE=false`, keep `PAYPAL_API_BASE_URL=https://api-m.sandbox.paypal.com`, and provide the Sandbox app credentials and webhook ID in `apps/api/.env`. Set `LLM_FORCE_LIVE=true` and configure one LLM provider as well, because non-demo mode requires a live LLM. In `apps/web/.env.local`, set `NEXT_PUBLIC_PAYPAL_CLIENT_ID` to the client ID for the same Sandbox app. Follow [the PayPal setup guide](docs/PAYPAL_SETUP.md) to create the app and register its webhook.
-
-This setup uses PayPal Sandbox. Production PayPal credentials and production money movement are outside this local development guide.
+PayPal remains an independent deployment-wide setting. For Sandbox checkout, set `PAYPAL_API_BASE_URL=https://api-m.sandbox.paypal.com` and configure the matching Sandbox app credentials, webhook ID, and browser client ID. Both demo and regular accounts stay on Sandbox; production money movement is not enabled by account login. `DEMO_MODE` only controls mock-payment fallback when valid PayPal credentials are absent. To use the webhook simulator during local development, set `ENABLE_WEBHOOK_SIMULATOR=true`.
 
 ### Check app configuration
 

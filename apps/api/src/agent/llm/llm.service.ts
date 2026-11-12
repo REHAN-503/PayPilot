@@ -17,6 +17,7 @@ export interface FixtureEntry {
 
 export type LlmProviderName = 'anthropic' | 'gemini' | 'openrouter' | 'fixture';
 export type LlmRuntimeMode = 'live' | 'live+fallback' | 'fixture';
+export type LlmRequestMode = 'demo' | 'live';
 
 export interface LlmCallMeta {
   provider: LlmProviderName;
@@ -342,8 +343,9 @@ export class LlmService implements OnModuleInit {
     system: string,
     user: string,
     promptType: 'intent' | 'planRanking' = 'intent',
+    requestMode?: LlmRequestMode,
   ): Promise<T> {
-    const result = await this.generateJsonWithMeta(schema, system, user, promptType);
+    const result = await this.generateJsonWithMeta(schema, system, user, promptType, requestMode);
     return result.data;
   }
 
@@ -352,10 +354,30 @@ export class LlmService implements OnModuleInit {
     system: string,
     user: string,
     promptType: 'intent' | 'planRanking' = 'intent',
+    requestMode?: LlmRequestMode,
   ): Promise<LlmGenerationResult<T>> {
-    const liveRequired = this.isLiveRequired();
+    const demoRequest = requestMode === 'demo';
+    const liveRequired = requestMode === 'live' || this.isLiveRequired();
     const liveAvailable = this.hasLiveProvider();
     const startedAt = Date.now();
+
+    if (demoRequest) {
+      const fixtureData = this.getFixtureResult(schema, user, promptType);
+      if (!fixtureData) {
+        throw new LlmUnavailableError(`No demo fixture found for prompt: "${user.slice(0, 80)}"`);
+      }
+      return {
+        data: fixtureData,
+        meta: {
+          provider: 'fixture',
+          model: 'built-in-demo-fixtures',
+          latencyMs: Date.now() - startedAt,
+          mode: 'fixture',
+          fallbackUsed: false,
+          attempts: 0,
+        },
+      };
+    }
 
     if (liveRequired && !liveAvailable) {
       throw new LlmUnavailableError('Live LLM mode required but no configured provider API key is available');

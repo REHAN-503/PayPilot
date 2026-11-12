@@ -24,6 +24,7 @@ import {
 } from '../policy/risk.gate.js';
 import { ReplanService } from '../replan/replan.service.js';
 import { toCents, fromCents, sumCents } from '../common/money.js';
+import type { LlmRequestMode } from '../agent/llm/llm.service.js';
 
 export type ActivityCallback = (activity: any) => void;
 
@@ -71,7 +72,13 @@ export class IntentsService {
     return { dailySpent: fromCents(dailySpentCents), monthlySpent: fromCents(monthlySpentCents) };
   }
 
-  async create(userId: string, rawInput: string, onActivity?: ActivityCallback) {
+  async create(
+    userId: string,
+    rawInput: string,
+    onActivity?: ActivityCallback,
+    requestMode?: LlmRequestMode,
+  ) {
+    const isDemoUser = requestMode === 'demo';
     // 1. Fetch or initialize user policy
     const policy = await this.prisma.userPolicy.upsert({
       where: { userId },
@@ -107,7 +114,12 @@ export class IntentsService {
     let wasClamped = false;
 
     try {
-      const result = await parseIntentWithLlm(this.llmService, rawInput, policyCeiling);
+      const result = await parseIntentWithLlm(
+        this.llmService,
+        rawInput,
+        policyCeiling,
+        requestMode,
+      );
       parsedIntent = result.intent;
       wasClamped = result.wasClamped;
       intentLlm = result.llm;
@@ -115,7 +127,10 @@ export class IntentsService {
       fallbackReason = result.fallbackReason || result.llm?.fallbackReason;
     } catch (err) {
       if (err instanceof LlmUnavailableError) {
-        if (this.llmService.isForceLive() || this.llmService.isLiveRequired()) {
+        if (
+          requestMode === 'live' ||
+          (!isDemoUser && (this.llmService.isForceLive() || this.llmService.isLiveRequired()))
+        ) {
           throw err;
         }
         this.logger.warn(`LLM unavailable for intent parsing, using deterministic fallback: ${err.message}`);
@@ -343,6 +358,7 @@ export class IntentsService {
         parsedIntent,
         candidateProducts as CandidateProduct[],
         rawInput,
+        requestMode,
       );
       planLlm = planExecution.llm;
 

@@ -1,8 +1,9 @@
 import { Controller, Get, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+import { AllowAnonymous, Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { LlmService } from './agent/llm/llm.service.js';
 import { PayPalClient } from './paypal/paypal.client.js';
+import { isDemoAccount } from './auth/demo-account.js';
 
 @Controller()
 export class AppController {
@@ -25,18 +26,19 @@ export class AppController {
 
   @AllowAnonymous()
   @Get('health/config')
-  getConfigHealth() {
+  getConfigHealth(@Session() session?: UserSession) {
     const demoMode = this.config?.get<string>('DEMO_MODE') === 'true';
+    const accountIsDemo = isDemoAccount(session?.user?.email);
     const nodeEnv = this.config?.get<string>('NODE_ENV') || 'development';
     const llm = this.llmService?.getConfigHealth();
     const liveRequired = this.llmService?.isLiveRequired() ?? (!demoMode || this.config?.get<string>('LLM_FORCE_LIVE') === 'true');
     const llmConfigured = llm?.llmConfigured ?? this.llmService?.hasLiveProvider() ?? false;
 
     return {
-      llmMode: llm?.llmMode ?? (!liveRequired ? 'fixture' : 'live'),
-      llmProvider: llm?.llmProvider ?? (this.config?.get<string>('LLM_PROVIDER') || 'anthropic'),
-      llmModel: llm?.llmModel ?? (this.config?.get<string>('LLM_MODEL') || ''),
-      llmConfigured,
+      llmMode: accountIsDemo ? 'fixture' : llm?.llmMode ?? (!liveRequired ? 'fixture' : 'live'),
+      llmProvider: accountIsDemo ? 'fixture' : llm?.llmProvider ?? (this.config?.get<string>('LLM_PROVIDER') || 'anthropic'),
+      llmModel: accountIsDemo ? 'built-in-demo-fixtures' : llm?.llmModel ?? (this.config?.get<string>('LLM_MODEL') || ''),
+      llmConfigured: accountIsDemo || llmConfigured,
       paypalMode: this.paypalClient?.getMode() ?? (demoMode ? 'mock' : 'sandbox'),
       simulatorEnabled: false,
       environment: nodeEnv,

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { NegotiationService, type SafeNegotiationResponse } from './negotiation.service.js';
 import { LlmRateLimitGuard } from '../common/rate-limit.guard.js';
+import { isDemoAccount } from '../auth/demo-account.js';
 
 @Controller()
 export class NegotiationController {
@@ -17,7 +18,12 @@ export class NegotiationController {
   ): Promise<SafeNegotiationResponse> {
     const parsed = z.object({ targetDiscountPercent: z.number().min(0).max(50).optional() }).safeParse(body ?? {});
     if (!parsed.success) throw new BadRequestException('targetDiscountPercent must be between 0 and 50');
-    return this.negotiationService.startNegotiation(session.user.id, id, parsed.data.targetDiscountPercent);
+    return this.negotiationService.startNegotiation(
+      session.user.id,
+      id,
+      parsed.data.targetDiscountPercent,
+      isDemoAccount(session.user.email),
+    );
   }
 
   @Get('negotiations/:id')

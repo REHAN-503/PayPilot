@@ -16,6 +16,8 @@ import {
 import { createIntentSchema } from './intent.schema.js';
 import { IntentsService } from './intents.service.js';
 import { LlmRateLimitGuard } from '../common/rate-limit.guard.js';
+import { isDemoAccount } from '../auth/demo-account.js';
+import type { LlmRequestMode } from '../agent/llm/llm.service.js';
 
 @Controller('intents')
 export class IntentsController {
@@ -39,6 +41,8 @@ export class IntentsController {
     return this.intentsService.create(
       session.user.id,
       parsed.data.rawInput,
+      undefined,
+      isDemoAccount(session.user.email) ? 'demo' : 'live',
     );
   }
 
@@ -75,6 +79,7 @@ export class IntentsController {
         session.user.id,
         parsed.data.rawInput,
         onActivity,
+        isDemoAccount(session.user.email) ? 'demo' : 'live',
       );
       res.write(`event: result\ndata: ${JSON.stringify(result)}\n\n`);
     } catch (err: any) {

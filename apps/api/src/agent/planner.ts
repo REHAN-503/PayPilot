@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LlmService, type LlmCallMeta } from './llm/llm.service.js';
+import { LlmService, type LlmCallMeta, type LlmRequestMode } from './llm/llm.service.js';
 import { HallucinatedProductIdError } from './llm/llm-errors.js';
 import type { ParsedIntent } from './intent-parser.js';
 import { toCents, fromCents } from '../common/money.js';
@@ -86,6 +86,7 @@ export async function rankAndPlanWithLlm(
   intent: ParsedIntent,
   candidates: CandidateProduct[],
   rawInput: string,
+  requestMode?: LlmRequestMode,
 ): Promise<VerifiedPlanExecution> {
   if (candidates.length === 0) {
     throw new Error('Cannot plan purchase: candidate products list is empty');
@@ -113,6 +114,7 @@ Select the primary product and 2 alternatives from the candidate products above.
     PLANNER_SYSTEM_PROMPT,
     userPrompt,
     'planRanking',
+    requestMode,
   );
   const ranking = llmResult.data;
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LlmService, type LlmCallMeta } from './llm/llm.service.js';
+import { LlmService, type LlmCallMeta, type LlmRequestMode } from './llm/llm.service.js';
 
 export const IntentSchema = z.object({
   goal: z.string().min(1),
@@ -86,6 +86,7 @@ export async function parseIntentWithLlm(
   llmService: LlmService,
   rawInput: string,
   policyCeiling?: number | null,
+  requestMode?: LlmRequestMode,
 ): Promise<IntentParseResult> {
   const delimitedUserPrompt = buildDelimitedPrompt(rawInput);
   const llmResult = await llmService.generateJsonWithMeta(
@@ -93,6 +94,7 @@ export async function parseIntentWithLlm(
     INTENT_PARSER_SYSTEM_PROMPT,
     delimitedUserPrompt,
     'intent',
+    requestMode,
   );
   const clamped = clampIntentBudget(llmResult.data, policyCeiling);
   return {
