@@ -285,11 +285,24 @@ export default function DashboardPage() {
       const saved = sessionStorage.getItem(dashboardStorageKey);
       if (saved) {
         const state = JSON.parse(saved) as {
-          goal?: string; steps?: AgentStep[]; currentStepId?: string;
+          goal?: string; steps?: Array<{ id?: string; status?: string; detail?: string }>; currentStepId?: string;
           activePlan?: PurchasePlan | null; degradedMode?: boolean; showAgentPanel?: boolean;
         };
         if (typeof state.goal === 'string') setGoal(state.goal);
-        if (Array.isArray(state.steps) && state.steps.length === INITIAL_AGENT_STEPS.length) setSteps(state.steps);
+        if (Array.isArray(state.steps)) {
+          // Restore serializable step state onto the current icon components. Lucide
+          // icons are React component objects and cannot be round-tripped through JSON.
+          const savedSteps = new Map(state.steps.map((step) => [step.id, step]));
+          setSteps(INITIAL_AGENT_STEPS.map((step) => {
+            const savedStep = savedSteps.get(step.id);
+            const validStatus = ['idle', 'running', 'completed', 'blocked'].includes(savedStep?.status || '');
+            return {
+              ...step,
+              status: validStatus ? savedStep!.status as AgentStep['status'] : step.status,
+              detail: typeof savedStep?.detail === 'string' ? savedStep.detail : undefined,
+            };
+          }));
+        }
         if (typeof state.currentStepId === 'string') setCurrentStepId(state.currentStepId);
         if (state.activePlan) setActivePlan(state.activePlan);
         if (typeof state.degradedMode === 'boolean') setDegradedMode(state.degradedMode);
@@ -305,7 +318,12 @@ export default function DashboardPage() {
     if (!dashboardStorageKey || restoredDashboardKey !== dashboardStorageKey) return;
     try {
       sessionStorage.setItem(dashboardStorageKey, JSON.stringify({
-        goal, steps, currentStepId, activePlan, degradedMode, showAgentPanel,
+        goal,
+        steps: steps.map(({ id, status, detail }) => ({ id, status, detail })),
+        currentStepId,
+        activePlan,
+        degradedMode,
+        showAgentPanel,
       }));
     } catch {
       // Keep dashboard interactions available if browser storage is unavailable.
