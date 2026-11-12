@@ -1,310 +1,359 @@
-# PayPilot ⚡
+# PayPilot
 
-> **Autonomous, Policy-Governed Commerce Agent with Cryptographic PayPal Settlement**  
-> *Built for the PayPal AI Hackathon (Devpost)*
+**Governed AI procurement with PayPal Sandbox settlement.**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16_App_Router-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-cyan?style=flat-square&logo=react)](https://react.dev/)
-[![NestJS](https://img.shields.io/badge/NestJS-12-red?style=flat-square&logo=nestjs)](https://nestjs.com/)
-[![PayPal Orders v2](https://img.shields.io/badge/PayPal-Orders_v2_REST-003087?style=flat-square&logo=paypal)](https://developer.paypal.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+PayPilot turns a purchase request into a reviewable plan. AI can interpret the request and compare catalog options, while deterministic server-side policy and risk checks decide whether that plan is allowed. When policy requires it, a person approves the plan before checkout. PayPal confirms payment, and a verified webhook records settlement in the audit ledger.
 
----
+> **Hackathon demo:** [Open PayPilot](https://paypilot-web-4jd8.onrender.com/) · [API health](https://paypilot-api-85n1.onrender.com/health)
+>
+> Payments are configured for **PayPal Sandbox**. Use Sandbox buyer credentials at checkout. The app is a hackathon prototype, not a financial institution or a production system for moving real money.
 
-## 🎯 Problem & Solution
+![TypeScript](https://img.shields.io/badge/TypeScript-5%20%2F%206-3178C6?style=flat-square&logo=typescript)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js)
+![React](https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react)
+![NestJS](https://img.shields.io/badge/NestJS-12-E0234E?style=flat-square&logo=nestjs)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B-4169E1?style=flat-square&logo=postgresql)
+![PayPal](https://img.shields.io/badge/PayPal-Orders%20v2-003087?style=flat-square&logo=paypal)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-### The Problem
-Autonomous AI agents are transitioning from conversation to real-world tool execution. However, when AI agents interact with financial rails, existing prototypes either:
-1. **Rely on Fragile Prompts**: Asking an LLM *"Is this safe to buy?"*, which is easily bypassed through prompt injection.
-2. **Grant Unbounded Financial Authority**: Giving agents direct API credentials with no deterministic spending caps, risking runaway loops.
-3. **Lack Verifiable Auditability**: Storing payment records without immutable transaction ledgers or cryptographic proof of settlement.
+## Submission demo
 
-### The Solution: PayPilot
-PayPilot enforces a strict architectural boundary between **stochastic generative intelligence** and **deterministic financial execution**:
+1. Open the [deployed app](https://paypilot-web-4jd8.onrender.com/) and choose **Try the demo**.
+2. On the dashboard, submit: `I need a developer monitor under $250. Prioritize text clarity and value.`
+3. Review the recommended item, alternatives, policy checks, and risk assessment.
+4. The demo policy uses **Ask Every Time**, so approve the plan and try checkout with a PayPal Sandbox buyer account. Complete the PayPal checkout to authorize the test payment.
+5. Inspect the plan, activity timeline, payment record, or trust receipt to follow the decision and settlement evidence.
 
-$$\text{\bf User Intent} \longrightarrow \text{\bf AI Planning} \longrightarrow \text{\bf Deterministic Policy Guard} \longrightarrow \text{\bf Human Authorization} \longrightarrow \text{\bf PayPal Orders v2} \longrightarrow \text{\bf Webhook Verification} \longrightarrow \text{\bf Immutable Ledger}$$
+The seeded demo login is `demo@paypilot.dev` / `Password123!`. The **Try the demo** button signs into this account automatically. These public demo credentials are for the shared hackathon environment only; do not reuse them for a private deployment.
 
-- The LLM **never touches credentials**, **never moves money**, and **cannot bypass policy limits**.
-- Hard spending limits, velocity checks, and risk gates are pure TypeScript functions with deterministic, heavily-tested behaviour.
-- Payments only settle once **PayPal's cryptographic webhook signature** is received and verified.
+## Why PayPilot
 
----
-
-## ✨ Key Features
-
-1. **Autonomous Procurement Planning**: Converts freeform goals into structured, itemized `PurchasePlan` candidates with spec tradeoff explanations.
-2. **Deterministic Policy Engine & Budget Guard**: Enforces per-transaction caps, daily/monthly budgets, currency matching (`USD`), and category routing.
-3. **Autonomous Budget Re-Planning**: When a preferred item exceeds limits (e.g., $289 monitor against a $250 limit), the agent automatically identifies the best compliant substitution (e.g., PixelView 24" at $229.99), explaining exact trade-offs.
-4. **Behavioral Risk Gate**: Multi-signal scoring engine (0–100) evaluating budget consumption, merchant trust, catalog scarcity, recent payment velocity, and basket size.
-5. **Interactive Approval Sheet**: Mobile-friendly bottom drawer featuring a rule-by-rule policy compliance checklist, risk chip, and official `@paypal/react-paypal-js` Smart Buttons.
-6. **Buyer ↔ Merchant Autonomous Negotiation**: Multi-round concession game between buyer and merchant agents. Enforces strict buyer ceilings and secret server-side merchant reserve floors.
-7. **PayPal Orders v2 & Webhook Verification**: Idempotent order creation (`PayPal-Request-Id`), capture tracking, and authoritative signature verification via PayPal's REST API.
-8. **Verifiable Trust Timeline**: Real-time event stream (`/api/timeline/stream`) tracking every decision node with inspectable raw JSON evidence.
-9. **Demo and Sandbox Modes**: Uses fixture-backed example prompts and mocked PayPal orders for demos; can call an LLM provider and PayPal Sandbox when credentials are configured.
-
----
-
-## 🏗️ System Architecture
+AI agents are good at interpreting a request and comparing products. They should not decide by themselves whether a transaction can be funded. PayPilot separates those responsibilities:
 
 ```mermaid
-flowchart TD
-    User([👤 User / Procurement Officer]) -->|Goal / Prompt| Web[🖥️ Next.js 16 Web App]
-    Web -->|Rewrite Proxy /api/*| API[⚙️ NestJS 12 Gateway]
-    
-    subgraph Intelligence ["🧠 Stochastic Intelligence (Advisory Only)"]
-        API --> IntentParser[Intent Parser]
-        IntentParser --> CatalogEngine[Catalog Ranking & Tradeoffs]
-        CatalogEngine --> Negotiation[Multi-Agent Negotiation]
-    end
-
-    subgraph Governance ["🛡️ Deterministic Governance (Strict Execution Guard)"]
-        CatalogEngine --> PolicyEngine{Policy Engine\nHard Limits}
-        PolicyEngine --> RiskGate{Risk Gate\nMulti-Signal 0-100}
-        RiskGate -- "Blocked by Budget" --> Replan[Auto-Replan Loop\nMax 2 Iterations]
-        Replan --> CatalogEngine
-        PolicyEngine -- "Require Approval" --> ApprovalSheet[Interactive Approval Sheet]
-    end
-
-    subgraph Payments ["💳 Cryptographic PayPal Rails"]
-        ApprovalSheet -->|User Authorized| PayClient[PayPal Client v2]
-        PayClient -->|POST /v2/checkout/orders| PayPalSandbox[(PayPal Sandbox API)]
-        PayPalSandbox -->|Client Approval| SmartButtons[PayPal Smart Buttons]
-        SmartButtons -->|Capture| PayClient
-        PayPalSandbox -.->|Signed Webhook| WebhookReceiver[Webhook Controller]
-        WebhookReceiver -->|Verify Signature| PayPalSandbox
-    end
-
-    subgraph Ledger ["🔒 Tamper-Proof Audit"]
-        WebhookReceiver -->|Idempotent Settle| TxLedger[(PostgreSQL Immutable Ledger)]
-        TxLedger --> SSE[SSE Broadcast]
-        SSE -->|Real-Time Append| Web
-    end
+flowchart LR
+    A[Purchase request] --> B[AI intent and product plan]
+    B --> C[Deterministic policy checks]
+    C --> D[Risk assessment]
+    D --> E{Policy decision}
+    E -->|Approval required| F{User approval}
+    E -->|Auto-execution allowed| H[PayPal Orders v2]
+    F -->|Approve| H
+    F -->|Reject| G[Plan rejected]
+    H --> I[PayPal checkout]
+    I --> J[Verified PayPal webhook]
+    J --> K[Immutable transaction ledger]
+    K --> L[Timeline and trust receipt]
 ```
 
----
+The model proposes and explains. Server code enforces policy, validates catalog IDs and amounts, checks state transitions, and controls payment actions.
 
-## 🛠️ Technology Stack
+## Product capabilities
 
-| Component | Technology | Rationale |
+- **Natural-language procurement planning:** Extracts category, budget, quantity, priorities, and use case from a purchase request.
+- **Verified product recommendations:** Searches the seeded catalog, ranks candidate items, and explains alternatives and trade-offs.
+- **Budget-aware replanning:** Proposes an in-budget substitute when the preferred item exceeds a spending ceiling.
+- **Deterministic policy guard:** Enforces transaction, daily, and monthly limits; allowed and blocked categories; autonomy settings; and explicit approval rules.
+- **Behavioral risk assessment:** Scores purchase size, spending velocity, category, and other risk signals before approval.
+- **Human approval:** Presents policy results and risk details before creating a PayPal order.
+- **Buyer and merchant negotiation:** Runs bounded negotiation rounds with server-only merchant floors and buyer ceilings.
+- **PayPal Orders v2 and webhooks:** Creates idempotent orders, captures approved orders, verifies webhook signatures with PayPal, and deduplicates event IDs.
+- **Audit timeline and trust receipts:** Tracks intent, planning, policy, approval, payment, and webhook events; provides export and receipt verification views.
+- **Operational dashboards:** Includes a product store, AI assistant, plans, negotiation, policies, analytics, transactions, activity, and notifications.
+
+## Account modes
+
+AI behavior is selected server-side from the authenticated account. Users do not need to change environment flags when switching accounts.
+
+| Account | Planning and negotiation behavior |
+|---|---|
+| `demo@paypilot.dev` | Uses built-in prompt fixtures and deterministic negotiation. It does not call the configured AI provider for those operations. |
+| Any other signed-in account | Uses the configured live AI provider. A valid provider key and supported model are required. |
+
+The fixtures cover the built-in demo prompts, including the developer monitor, sub-$200 monitor, USB-C hub and keyboard, and prompt-injection examples. For arbitrary requests, use a regular account with the live provider configured.
+
+PayPal environment is configured separately from AI mode. The deployed app uses **Sandbox for all accounts**; signing in with a regular account does not switch PayPal to Live. `DEMO_MODE` controls server fallback behavior when PayPal credentials are absent; it does not identify demo users.
+
+## Safety and trust model
+
+- **The LLM cannot change policy.** Limits and category rules are loaded from PostgreSQL and evaluated in deterministic TypeScript.
+- **Plan amounts are recomputed server-side.** The backend resolves recommended product IDs against the candidate catalog and uses database prices.
+- **Approval follows policy.** The backend rechecks policy when creating an order and validates payment state transitions. Manual approval is required whenever the policy says so; auto-execution is available only when the user’s policy permits it.
+- **Webhook confirmation is authoritative.** A client-side capture response does not settle the internal ledger. PayPilot verifies PayPal’s webhook signature before recording settlement.
+- **Webhook replay is idempotent.** Event IDs are unique, preventing duplicate deliveries from duplicating ledger effects.
+- **Merchant floors remain private.** The merchant reserve price is not sent to the browser or buyer agent.
+- **Secrets stay server-side.** PayPal secrets, database URLs, Better Auth secrets, and AI provider keys belong only in the API environment.
+- **Demo and production money movement are separated.** This repository’s Render configuration points to PayPal Sandbox. It is not approved for unattended production payments.
+
+For additional detail, see [Security Model](docs/SECURITY.md), [Architecture](docs/ARCHITECTURE.md), [API reference](docs/API.md), and [PayPal setup](docs/PAYPAL_SETUP.md).
+
+## Technology
+
+| Area | Stack |
+|---|---|
+| Web app | Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4 |
+| API | NestJS 12, TypeScript, Better Auth |
+| Persistence | PostgreSQL, Prisma 7, `@prisma/adapter-pg` |
+| Validation | Zod |
+| Payments | PayPal JavaScript SDK, Orders v2 REST API, Webhooks |
+| UI and data | Radix UI, Framer Motion, AG Grid, Recharts, TanStack Query |
+| Deployment | Render web services and Render Postgres |
+
+## Live deployment
+
+| Service | URL | Health |
 |---|---|---|
-| **Frontend** | Next.js 16 (App Router), React 19, Tailwind CSS v4 | Server Components, Proxy route protection, zero-CORS rewrites |
-| **UI Primitives** | Radix UI, Framer Motion, Lucide Icons, Sonner | Responsive workspace UI with accessible controls |
-| **Data Grids & Charts** | AG Grid Community v36, Recharts | High-performance sortable transaction ledgers and spend charts |
-| **Backend Gateway** | NestJS 12, TypeScript (ESM) | Modular micro-architecture, dependency injection, strict validation |
-| **Database & ORM** | PostgreSQL 16+, Prisma 7, `@prisma/adapter-pg` | Relational consistency, double-entry ledgers, unique event constraints |
-| **Authentication** | Better Auth | Secure session cookies, route protection, 1-Click Demo login |
-| **Payment Rails** | PayPal Orders v2 REST API + Webhooks | Idempotent order creation, Smart Buttons, cryptographic verification |
-| **Validation & Testing** | Zod 4, Vitest 4, Playwright | Runtime schema validation, unit tests, and browser smoke tests |
+| Web | [paypilot-web-4jd8.onrender.com](https://paypilot-web-4jd8.onrender.com/) | Next.js app |
+| API | [paypilot-api-85n1.onrender.com](https://paypilot-api-85n1.onrender.com/) | [`/health`](https://paypilot-api-85n1.onrender.com/health) · [`/health/config`](https://paypilot-api-85n1.onrender.com/health/config) |
+| PayPal webhook | `https://paypilot-api-85n1.onrender.com/webhooks/paypal` | Registered on the PayPilot Sandbox REST app |
 
----
+Render free instances can spin down when idle, so the first request after inactivity may take longer. The Render Blueprint is in [`render.yaml`](render.yaml). It defines the API and web services and expects an existing Render Postgres database named `paypilot-postgres` in the Ohio region.
 
-## 💳 How PayPal is Used
+### Render deployment settings
 
-PayPilot implements the modern PayPal Orders v2 and Webhooks architecture:
+Keep the **Root Directory** empty for both services. The monorepo build needs the workspace root.
 
-1. **Idempotent Order Creation (`POST /v2/checkout/orders`)**:
-   - Initiated only after a `PurchasePlan` transitions to `APPROVED` and re-verifies policy constraints.
-   - Generates structured `purchase_units` with full itemized breakdown (subtotal, tax, shipping, discount, item descriptions).
-   - Transmits a unique `PayPal-Request-Id` derived from `hash(planId + approvalId)` to guarantee zero duplicate charges on network retries.
-2. **Client-Side Authorization (`@paypal/react-paypal-js`)**:
-   - PayPal Smart Buttons render dynamically inside the Approval Sheet once the user signs off on the policy checklist.
-3. **Capture Execution (`POST /v2/checkout/orders/{id}/capture`)**:
-   - Validates that the captured PayPal order ID matches the pending internal payment record. Transitions payment to `CAPTURE_PENDING`.
-4. **Cryptographic Webhook Settlement (`POST /webhooks/paypal`)**:
-   - PayPilot treats PayPal Webhooks as the **sole authoritative settlement trigger**.
-   - Validates webhook authenticity using PayPal's `/v1/notifications/verify-webhook-signature` endpoint.
-   - Dedupes incoming `event.id` values against a unique database table to safely ignore duplicate transmissions.
+#### API service
 
----
+| Setting | Value |
+|---|---|
+| Runtime | Node |
+| Region | Ohio (same region as the database and web service) |
+| Build command | `pnpm install --frozen-lockfile && pnpm --filter api exec prisma generate --schema prisma/schema.prisma && pnpm --filter api build` |
+| Start command | `pnpm --filter api start:prod` |
+| Health check | `/health` |
 
-## 🤖 How AI is Used
+Set the API environment variables listed below. Render should provide the database’s **Internal Database URL** to the API service through the Blueprint reference. Set `WEB_ORIGIN` to the web service’s exact origin.
 
-PayPilot explicitly isolates generative intelligence to advisory roles:
+#### Web service
 
-1. **Intent Parsing**: Converts ambiguous natural language into structured JSON constraints (category, budget ceilings, priority weights).
-2. **Catalog Tradeoff Generation**: Compares primary candidates against alternatives, extracting spec trade-offs (e.g., *"- $59.01, 24\" QHD instead of 27\" 4K"*).
-3. **Multi-Agent Negotiation**: Simulates dynamic price discovery between a Buyer Agent and a Merchant Agent. The code enforces unbreachable buyer ceilings and secret merchant reserve floors, falling back to deterministic concession rules if LLM output exceeds bounds.
+| Setting | Value |
+|---|---|
+| Runtime | Node |
+| Region | Ohio |
+| Build command | `pnpm install --frozen-lockfile && pnpm --filter web build` |
+| Start command | `pnpm --filter web start` |
 
----
+Set the three `NEXT_PUBLIC_*` values below on the web service. `NEXT_PUBLIC_API_URL` is used during the Next.js build, so redeploy after changing it.
 
-## 🔒 Security Model
+### Environment variables
 
-- **Prompt Injection Immunity**: Governance policies (`maxTransactionAmount`, `dailySpendingLimit`) are stored in PostgreSQL and evaluated by pure TypeScript functions. An LLM prompt cannot alter spending limits.
-- **Server-Side Floor Confidentiality**: The merchant's break-even reserve price is strictly isolated on the server and never sent to the buyer LLM or client bundle.
-- **Secret Isolation**: PayPal Client Secrets and Better Auth keys are never exposed to the frontend. All client API communication passes through Next.js server rewrites.
-- **Replay Protection**: Webhook event IDs are constrained by unique database indexes. Replayed events return HTTP 200 without executing secondary ledger mutations.
+#### API service
 
----
+| Variable | Required | Purpose / deployed value |
+|---|---:|---|
+| `DATABASE_URL` | Yes | Render Postgres Internal Database URL. For local remote migrations, use the External Database URL and `sslmode=require`. |
+| `BETTER_AUTH_URL` | Yes | API origin, e.g. `https://paypilot-api-85n1.onrender.com` (no path). |
+| `BETTER_AUTH_SECRET` | Yes | Private random secret of at least 32 characters. Render can generate this value. |
+| `WEB_ORIGIN` | Yes | Frontend origin, e.g. `https://paypilot-web-4jd8.onrender.com` (no path or trailing slash). |
+| `PORT` | Render-provided | Render assigns the listening port. Locally the API defaults to `4000`. |
+| `LLM_PROVIDER` | Yes for regular accounts | Provider name; the current deployment uses `openrouter`. |
+| `LLM_MODEL` | Yes for regular accounts | Provider model ID. The current Blueprint default is `nvidia/nemotron-3.5-super-vl:free`; use a model supported by your provider account. |
+| `OPENROUTER_API_KEY` | Yes for regular accounts when using OpenRouter | Private provider key. Keep it only on the API service. |
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Optional alternatives | The API also supports Gemini and Anthropic when selected with `LLM_PROVIDER`; the checked-in env templates use OpenRouter. |
+| `LLM_FORCE_LIVE` | Recommended `true` for deployed regular-account AI | Requires live provider behavior for deployment-wide AI paths. The demo account’s planning requests still use fixtures. |
+| `DEMO_MODE` | Set according to payment fallback policy | Controls mock PayPal fallback when credentials are absent and demo-only webhook behavior. It is not the per-account AI mode switch. |
+| `PAYPAL_API_BASE_URL` | Yes for Sandbox checkout | `https://api-m.sandbox.paypal.com` |
+| `PAYPAL_CLIENT_ID` | Yes for Sandbox checkout | Client ID from the same Sandbox REST app as the webhook. |
+| `PAYPAL_CLIENT_SECRET` | Yes for Sandbox checkout | Secret from that same Sandbox REST app. Never put this on the web service. |
+| `PAYPAL_WEBHOOK_ID` | Yes for webhook settlement | ID of the webhook registered to `https://paypilot-api-85n1.onrender.com/webhooks/paypal`. |
+| `PAYPAL_CURRENCY` | Optional | Defaults to `USD`. |
+| `ENABLE_WEBHOOK_SIMULATOR` | Local only | Set `true` only for local development. The simulator is disabled in production. |
+| `DEMO_USER_PASSWORD` | Optional during seeding | Keep `Password123!` if you want the included **Try the demo** button to sign in successfully. |
 
-## 🚀 Quick Start
+Configure a live AI provider even if you plan to demo first: regular accounts intentionally use live AI. The demo account does not call the provider for supported fixture prompts.
 
-### Prerequisites
+#### Web service
 
-- Node.js 24 or newer (required by the workspace)
-- pnpm 12.16.1 (the version in `package.json`)
-- Docker with Compose, for local PostgreSQL
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | `https://paypilot-api-85n1.onrender.com` |
+| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | Public client ID from the same PayPal Sandbox REST app. For local mock checkout, use `sb`. |
+| `NEXT_PUBLIC_PAYPAL_CURRENCY` | `USD` |
 
-### 1. Create the app environment files
+Only browser-safe values belong in `NEXT_PUBLIC_*`. Do not add database credentials, `BETTER_AUTH_SECRET`, AI provider keys, or `PAYPAL_CLIENT_SECRET` to the web service.
 
-Run these commands from the repository root:
+### PayPal Sandbox webhook
+
+In PayPal Developer Dashboard, select **Sandbox** and the REST app whose client ID and secret are configured on the API service. Register this listener URL:
+
+```text
+https://paypilot-api-85n1.onrender.com/webhooks/paypal
+```
+
+Subscribe to the events handled by the API:
+
+- `CHECKOUT.ORDER.APPROVED`
+- `PAYMENT.CAPTURE.PENDING`
+- `PAYMENT.CAPTURE.COMPLETED`
+- `PAYMENT.CAPTURE.DENIED`
+- `PAYMENT.CAPTURE.DECLINED`
+- `PAYMENT.CAPTURE.REVERSED`
+- `PAYMENT.CAPTURE.REFUNDED`
+
+Copy the generated **Webhook ID** into the API service’s `PAYPAL_WEBHOOK_ID`, then redeploy the API. The webhook ID must come from the same Sandbox REST app used by `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`.
+
+### Initialize a deployed database
+
+The Blueprint references (but does not create) the Render Postgres database named `paypilot-postgres`. Create it in Ohio first, or change the database name and region reference in `render.yaml` to match an existing database. The API build generates Prisma Client but does not apply migrations or seed data. After creating the database, set `DATABASE_URL` in your terminal to its **External Database URL**, then run these commands from the repository root:
 
 ```bash
+pnpm db:migrate
+pnpm db:seed
+```
+
+For an external Render connection, ensure TLS is required by appending `?sslmode=require` (or `&sslmode=require` if the URL already has query parameters). Keep the URL private and unset it after the commands. The seed operation adds the 17 catalog products, demo account, and demo policy; products and policy use upserts, so seeding can be repeated.
+
+If migrations have already completed, do not rerun them just to seed; run `pnpm db:seed` only. Never paste database URLs or passwords into GitHub, chat, or frontend environment variables.
+
+## Local development
+
+### Requirements
+
+- Node.js 24 or newer
+- pnpm 12.16.1 (declared in the root `package.json`)
+- Docker with Docker Compose, or another PostgreSQL instance
+
+### 1. Install dependencies and create environment files
+
+```bash
+corepack enable
+corepack prepare pnpm@12.16.1 --activate
+pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-The API reads `apps/api/.env`; the web app reads `apps/web/.env.local`. The root `.env.example` is a reference only. Do not put server secrets in the web environment file. Before starting, set a private `BETTER_AUTH_SECRET` of at least 32 characters in `apps/api/.env`. For a local demo, set `NEXT_PUBLIC_PAYPAL_CLIENT_ID=sb` in the web env file.
+In `apps/api/.env`, set a private `BETTER_AUTH_SECRET` with at least 32 characters. For local fixture-only demo use, set:
 
-### 2. Start and prepare the database
+```env
+DEMO_MODE=true
+LLM_FORCE_LIVE=false
+```
+
+This allows the API to start without a live AI provider key. The seeded demo account can use supported fixtures. Regular accounts still request live AI and need a configured provider key. For live PayPal Sandbox checkout, configure the matching Sandbox credentials, webhook ID, and browser client ID; without valid PayPal credentials, `DEMO_MODE=true` enables mock-payment fallback.
+
+### 2. Start PostgreSQL, migrate, and seed
+
+With Docker Compose:
 
 ```bash
-pnpm install
 pnpm db:up
 pnpm db:migrate
 pnpm db:seed
 ```
 
-This starts PostgreSQL, applies the Prisma migrations, and seeds the demo user and product catalog. Keep Docker running while you use PayPilot.
+The local database URL in the API env template points to `localhost:5432`. If you use another database, update `DATABASE_URL` first.
 
-### 3. Start the apps
+### 3. Run both apps
 
 ```bash
 pnpm dev
 ```
 
-Open [http://localhost:3000/welcome](http://localhost:3000/welcome) and select **Launch Demo**. The API runs on port `4000`; the web app runs on port `3000`.
+Open [http://localhost:3000](http://localhost:3000). The API runs on [http://localhost:4000](http://localhost:4000). The Next.js app rewrites `/api/*` requests to the API, keeping browser calls on the frontend origin.
 
-If you prefer separate terminals, run `pnpm --filter api start:dev` and `pnpm --filter web dev` from the repository root.
-
-### Demo login
-
-The seeded account is:
-
-| Email | Password |
-|---|---|
-| `demo@paypilot.dev` | `Password123!` |
-
-You can also use the **Launch Demo** button to sign in without entering the credentials.
-
-## ⚙️ Demo accounts, live AI, and PayPal Sandbox
-
-AI mode is selected from the authenticated account. **Try the demo** signs in as `demo@paypilot.dev`; that account uses the built-in prompt fixtures and deterministic negotiation, with no AI provider call. Regular accounts use the configured live LLM provider. There is no need to change demo flags when users switch accounts. Demo fixtures cover the built-in example prompts; configure a provider for arbitrary live prompts.
-
-Configure the provider once in `apps/api/.env`. For OpenRouter:
-
-```env
-LLM_PROVIDER=openrouter
-OPENROUTER_API_KEY=your_openrouter_api_key
-LLM_MODEL=openai/gpt-4o-mini
-```
-
-Keep the provider key in the API environment only. `LLM_MODEL` must be an OpenRouter model ID in `provider/model` form. `LLM_FORCE_LIVE` can remain enabled for deployment-wide operations that require a provider.
-
-PayPal remains an independent deployment-wide setting. For Sandbox checkout, set `PAYPAL_API_BASE_URL=https://api-m.sandbox.paypal.com` and configure the matching Sandbox app credentials, webhook ID, and browser client ID. Both demo and regular accounts stay on Sandbox; production money movement is not enabled by account login. `DEMO_MODE` only controls mock-payment fallback when valid PayPal credentials are absent. To use the webhook simulator during local development, set `ENABLE_WEBHOOK_SIMULATOR=true`.
-
-### Check app configuration
-
-With the API running, open [http://localhost:4000/health](http://localhost:4000/health) to check API availability and [http://localhost:4000/health/config](http://localhost:4000/health/config) to view non-secret mode indicators.
-
-## 🔧 Environment variables
-
-### API: `apps/api/.env`
-
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `BETTER_AUTH_URL` | API origin, usually `http://localhost:4000` |
-| `BETTER_AUTH_SECRET` | Secret used to sign authentication sessions (32+ characters) |
-| `DEMO_MODE` | `true` permits PayPal mock behavior when valid PayPal credentials are absent; `false` requires configured PayPal credentials |
-| `LLM_FORCE_LIVE` | `true` requires a provider call, including for built-in example prompts |
-| `LLM_PROVIDER` | `openrouter`, `gemini`, or `anthropic` |
-| `LLM_MODEL` | Provider model ID; OpenRouter IDs use `provider/model` form |
-| `OPENROUTER_API_KEY` | OpenRouter key; keep this in the API env file only |
-| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | Alternative provider keys, depending on `LLM_PROVIDER` |
-| `PAYPAL_API_BASE_URL` | Use the Sandbox endpoint for local checkout testing |
-| `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | PayPal app credentials for the configured environment |
-| `PAYPAL_WEBHOOK_ID` | Webhook ID registered for the PayPal app |
-| `PAYPAL_CURRENCY` | Currency used for PayPal orders (defaults to `USD`) |
-| `ENABLE_WEBHOOK_SIMULATOR` | Set `true` to enable the dev simulator outside production |
-| `PORT` / `WEB_ORIGIN` | API port and allowed web origins |
-| `DEMO_USER_PASSWORD` | Password for the seeded demo account |
-
-### Web: `apps/web/.env.local`
-
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | API origin, usually `http://localhost:4000` |
-| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | PayPal client ID used by the browser SDK (`sb` for the local demo, or the matching Sandbox app ID for Sandbox checkout) |
-| `NEXT_PUBLIC_PAYPAL_CURRENCY` | Currency displayed by the browser SDK, usually `USD` |
-
-Only values intended for browser use belong in `NEXT_PUBLIC_*` variables. Never place OpenRouter, PayPal secret, or Better Auth secret keys there.
-
-## 🧪 Checks
+You can also run the apps separately:
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm test:e2e
+pnpm --filter api start:dev
+pnpm --filter web dev
 ```
 
-`pnpm test:e2e` expects the API, database, and web app configuration to be available. For a quick API availability check, run `pnpm smoke` while the API is running.
+### Local webhook simulator
 
-## 🌐 PayPal Sandbox Setup & Webhooks
+For local development only, set `ENABLE_WEBHOOK_SIMULATOR=true` and `DEMO_MODE=true` in the API environment. The dev endpoint is `POST /dev/webhooks/simulate`. It can exercise completed, denied, reversed, and duplicate event handling without exposing a local API to PayPal. It is unavailable when `NODE_ENV=production`.
 
-For live testing with real PayPal Sandbox accounts, follow our detailed guide:
-👉 **[Read the PayPal setup guide](docs/PAYPAL_SETUP.md)**
+## API overview
 
-### Running Without PayPal Keys (`DEMO_MODE=true`)
-If you do not have PayPal developer credentials, keep `DEMO_MODE=true` in `apps/api/.env`. PayPilot will:
-1. Provide mock PayPal orders and mock capture IDs.
-2. Let you enable the **Dev Webhook Simulator** by setting `ENABLE_WEBHOOK_SIMULATOR=true` in `apps/api/.env`; it can simulate `COMPLETED`, `DENIED`, `REVERSED`, and duplicate webhook events during local development.
+The API is a NestJS service. Authenticated app requests are sent through the Next.js `/api` rewrite; the webhook receiver is public and verifies PayPal signatures itself.
 
----
+| Area | Routes |
+|---|---|
+| Health | `GET /health`, `GET /health/config` |
+| Authentication | Better Auth routes under `/api/auth/*` |
+| Catalog | `GET /products`, `GET /products/:id` |
+| Planning | `POST /intents`, `POST /intents/stream`, `GET /intents`, `GET /plans`, `GET /plans/:id` |
+| Plans | `POST /plans/:id/evaluate`, `/approve`, `/reject`, `/what-if`, `/cancel`; `PATCH /plans/:id/alternative` |
+| Policies | `GET /policies/me`, `PUT /policies/me`, `POST /policies/simulate` |
+| Negotiation | `POST /plans/:id/negotiate`, `GET /negotiations/:id` |
+| Payments | `POST /plans/:id/pay`, `POST /payments/:id/capture`, `POST /payments/:id/cancel`, `GET /payments`, `GET /payments/:id` |
+| Webhooks | `POST /webhooks/paypal`; local-only `POST /dev/webhooks/simulate` |
+| Audit and analytics | `/timeline`, `/timeline/stream`, `/ledger`, `/analytics/*`, `/receipts/:paymentId` |
 
-## 📁 Project Structure
+See [`docs/API.md`](docs/API.md) and [`docs/openapi.yaml`](docs/openapi.yaml) for request and response details.
 
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `pnpm dev` | Run API and web app through Turbo |
+| `pnpm build` | Build all workspace apps |
+| `pnpm typecheck` | Type-check workspace packages |
+| `pnpm lint` | Lint workspace packages |
+| `pnpm test` | Run unit and integration tests |
+| `pnpm test:e2e` | Run Playwright browser tests |
+| `pnpm smoke` | Run the HTTP smoke script against a running API and web app |
+| `pnpm db:up` / `pnpm db:down` | Start or stop local Docker Postgres |
+| `pnpm db:migrate` | Apply pending Prisma migrations |
+| `pnpm db:seed` | Seed catalog and demo account |
+
+`pnpm smoke` accepts `SMOKE_API_URL`, `SMOKE_ORIGIN`, and `SMOKE_PASSWORD` overrides. Browser tests and smoke checks need a running app and database.
+
+## Troubleshooting
+
+### Sign-in or sign-up returns 403
+
+- Set API `WEB_ORIGIN` to the exact deployed frontend origin, such as `https://paypilot-web-4jd8.onrender.com`. Do not include `/signup` or a trailing slash.
+- Set `BETTER_AUTH_URL` to the API origin, such as `https://paypilot-api-85n1.onrender.com`.
+- Save and redeploy the API service after changing either value.
+
+### Planning fails for a regular account
+
+Regular accounts use live AI. Check the API service’s Render logs for the provider response, then verify `LLM_PROVIDER`, `LLM_MODEL`, and the corresponding API key. Do not put provider keys in the web service. Use **Try the demo** to test the fixture-backed account without a provider call.
+
+### Planning fails for the demo account
+
+Sign in through **Try the demo** so the API receives the seeded `demo@paypilot.dev` account session. Confirm the database has been seeded and use one of the supported example prompts. After a code change, redeploy the API.
+
+### Catalog or account tables are missing
+
+Apply migrations with `pnpm db:migrate`, then seed with `pnpm db:seed`. The API build runs Prisma Client generation but does not apply database migrations.
+
+### External Render database access fails
+
+Use the database’s full External Database URL, not a hostname-only value. Append `?sslmode=require` when the URL has no query string. Keep the URL in a private terminal environment, and rotate the database credentials if they are exposed.
+
+### PayPal payment is not webhook-confirmed
+
+- Check that API `PAYPAL_API_BASE_URL` is `https://api-m.sandbox.paypal.com` for Sandbox credentials.
+- Confirm the client ID, secret, and webhook ID all belong to the same Sandbox REST app.
+- Confirm the registered webhook URL is `https://paypilot-api-85n1.onrender.com/webhooks/paypal` and includes the handled capture/order events.
+- Check API logs and PayPal Sandbox webhook event logs. A successful browser capture is not the same as verified webhook settlement.
+
+### Render build or startup is still in progress
+
+Check the service’s latest logs. The API health route is `/health`; the web service should start with `pnpm --filter web start`. Free instances can take time to wake after inactivity.
+
+## Repository layout
+
+```text
+apps/
+  api/       NestJS API, Prisma schema/migrations, seed data, fixtures
+  web/       Next.js app, UI, auth client, API client, Playwright tests
+docs/        Architecture, API, security, design, and PayPal setup guides
+postman/    Postman collection and environment
+render.yaml Render Blueprint for API, web, and Postgres
+scripts/    Smoke check and project utilities
 ```
-paypilot/
-├── apps/
-│   ├── api/                    # NestJS 12 Gateway
-│   │   ├── src/
-│   │   │   ├── agent/          # Procurement planning & catalog ranking
-│   │   │   ├── policy/         # Pure deterministic policy & risk gate
-│   │   │   ├── replan/         # Autonomous budget re-planning engine
-│   │   │   ├── negotiation/    # Multi-agent bargaining protocol
-│   │   │   ├── paypal/         # PayPal Orders v2 REST client
-│   │   │   ├── payments/       # Payment state machine & capture
-│   │   │   ├── webhooks/       # Cryptographic webhook signature verifier
-│   │   │   └── timeline/       # SSE streaming audit ledger
-│   │   └── prisma/             # Schema, migrations, and product seed data
-│   │
-│   └── web/                    # Next.js 16 Frontend (React 19)
-│       ├── src/
-│       │   ├── app/            # App Router pages (9 screens)
-│       │   ├── components/     # UI primitives, live agent panel, approval sheet
-│       │   ├── hooks/          # useEventStream (SSE connection)
-│       │   ├── lib/            # Typed API client, Zod schemas, Better Auth
-│       │   └── proxy.ts        # Next 16 route protection proxy
-│       └── tests/              # Playwright desktop and mobile smoke tests
-│
-├── docs/                       # Architecture, Security, API, and PayPal setup docs
-├── postman/                    # Postman collection & sandbox environment
-├── docker-compose.yml          # Local PostgreSQL container definition
-└── render.yaml                 # Production deployment blueprint
-```
 
----
+## Scope and limitations
 
-## ⚠️ Limitations & Future Work
+- PayPal integration is configured and documented for **Sandbox**. The project is not audited or certified for real-money autonomous purchasing.
+- Products come from the seeded internal catalog; live merchant inventory integrations are out of scope.
+- Checkout currently targets a single PayPal order rather than splitting a basket across merchants.
+- Demo fixtures intentionally cover selected prompts. Regular accounts need a functioning live LLM provider for arbitrary requests.
 
-PayPilot was built as an exploration of autonomous agent governance for the PayPal AI Hackathon:
-- **Sandbox Only**: Built and validated strictly against PayPal Sandbox. It is **not** audited or certified for unmonitored production money movement.
-- **Simulated Catalog**: Products are currently sourced from an internal seeded catalog rather than live third-party merchant APIs.
-- **Single-Merchant Carts**: Multi-item plans currently assume fulfillment through a single merchant checkout session. Future work includes multi-merchant split orders and automated recurring subscription renegotiation.
+## License
 
----
-
-## 📄 License
-This project is open-source under the [MIT License](LICENSE).
+This project is available under the [MIT License](LICENSE).

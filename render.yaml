@@ -22,7 +22,7 @@ services:
       - key: BETTER_AUTH_URL
         value: https://paypilot-api-85n1.onrender.com
       - key: WEB_ORIGIN
-        sync: false
+        value: https://paypilot-web-4jd8.onrender.com
       - key: DEMO_MODE
         value: "false"
       - key: LLM_FORCE_LIVE
@@ -34,7 +34,7 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: PAYPAL_API_BASE_URL
-        value: https://api-m.paypal.com
+        value: https://api-m.sandbox.paypal.com
       - key: PAYPAL_CURRENCY
         value: USD
       - key: PAYPAL_CLIENT_ID
