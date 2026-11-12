@@ -9,6 +9,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "predev": "prisma generate",
+    "prebuild": "prisma generate",
     "pretest": "prisma generate",
     "build": "nest build",
     "deploy": "nest deploy",
