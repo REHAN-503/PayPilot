@@ -29,10 +29,11 @@ import { toast } from 'sonner';
 interface TrustTimelineProps {
   events: TimelineEvent[];
   isLive?: boolean;
+  compact?: boolean;
   className?: string;
 }
 
-export function TrustTimeline({ events, isLive = false, className }: TrustTimelineProps) {
+export function TrustTimeline({ events, isLive = false, compact = false, className }: TrustTimelineProps) {
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
@@ -95,6 +96,44 @@ export function TrustTimeline({ events, isLive = false, className }: TrustTimeli
         return <Badge variant="outline">Recorded</Badge>;
     }
   };
+
+  // Compact mode — simple list for dashboard preview
+  if (compact) {
+    return (
+      <div className={cn('space-y-2', className)}>
+        {events.map((event) => (
+          <div key={event.id} className="flex items-start gap-3 group">
+            <div className={cn(
+              'w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 border',
+              event.status === 'blocked' ? 'border-[var(--vermilion)] bg-[var(--vermilion)]/10' :
+              event.status === 'warn' ? 'border-[var(--amber)] bg-[var(--amber)]/10' :
+              'border-[var(--rule)] bg-[var(--paper-2)]',
+            )}>
+              {getStageIcon(event.stage, event.status)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-[var(--ink)] truncate">{event.title}</span>
+                <span className={cn(
+                  'text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide',
+                  event.status === 'ok' ? 'bg-[var(--verdigris)]/12 text-[var(--verdigris)]' :
+                  event.status === 'warn' ? 'bg-[var(--amber)]/12 text-[var(--amber)]' :
+                  event.status === 'blocked' ? 'bg-[var(--vermilion)]/12 text-[var(--vermilion)]' :
+                  'bg-[var(--paper-2)] text-[var(--ink-3)]',
+                )}>
+                  {event.status}
+                </span>
+              </div>
+              <p className="text-[10px] text-[var(--ink-3)] mt-0.5 truncate">{event.explanation}</p>
+            </div>
+            <span className="text-[10px] text-[var(--ink-3)] shrink-0 font-mono">
+              {new Date(event.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (!events || events.length === 0) {
     return (

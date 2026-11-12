@@ -13,6 +13,11 @@ import {
   BarChart3,
   LogOut,
   Sparkles,
+  Store,
+  Bell,
+  MessageSquare,
+  ChevronRight,
+  Zap,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { authClient } from '../../lib/auth-client';
@@ -22,17 +27,35 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+  badgeColor?: 'blue' | 'green' | 'amber' | 'purple';
+  section?: string;
 }
 
 const navItems: NavItem[] = [
-  { label: 'Overview', href: '/', icon: LayoutDashboard },
-  { label: 'Plans', href: '/plans', icon: ShoppingBag },
-  { label: 'Negotiation', href: '/negotiation', icon: Handshake, badge: 'AI' },
-  { label: 'Transactions', href: '/transactions', icon: Receipt },
-  { label: 'Activity', href: '/timeline', icon: GitCommitHorizontal },
-  { label: 'Policies', href: '/policy', icon: ShieldCheck },
-  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { label: 'Dashboard', href: '/', icon: LayoutDashboard, section: 'main' },
+  { label: 'Store', href: '/store', icon: Store, badge: 'Live', badgeColor: 'green', section: 'main' },
+  { label: 'AI Assistant', href: '/chat', icon: MessageSquare, badge: 'New', badgeColor: 'purple', section: 'main' },
+  { label: 'Plans', href: '/plans', icon: ShoppingBag, section: 'main' },
+  { label: 'Negotiation', href: '/negotiation', icon: Handshake, badge: 'AI', badgeColor: 'blue', section: 'main' },
+  { label: 'Transactions', href: '/transactions', icon: Receipt, section: 'finance' },
+  { label: 'Activity', href: '/timeline', icon: GitCommitHorizontal, section: 'finance' },
+  { label: 'Notifications', href: '/notifications', icon: Bell, section: 'finance' },
+  { label: 'Policies', href: '/policy', icon: ShieldCheck, section: 'config' },
+  { label: 'Analytics', href: '/analytics', icon: BarChart3, section: 'config' },
 ];
+
+const sections = [
+  { id: 'main', label: 'Workspace' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'config', label: 'Configuration' },
+];
+
+const badgeColorMap = {
+  blue:   'bg-[var(--ledger)]/15 text-[var(--ledger)] border-[var(--ledger)]/30',
+  green:  'bg-[var(--verdigris)]/15 text-[var(--verdigris)] border-[var(--verdigris)]/30',
+  amber:  'bg-[var(--amber)]/15 text-[var(--amber)] border-[var(--amber)]/30',
+  purple: 'bg-[var(--purple)]/15 text-[var(--purple)] border-[var(--purple)]/30',
+};
 
 export function Sidebar({ className, onClose }: { className?: string; onClose?: () => void }) {
   const pathname = usePathname();
@@ -44,108 +67,148 @@ export function Sidebar({ className, onClose }: { className?: string; onClose?: 
     router.push('/welcome');
   };
 
+  const userInitial = session?.user?.name?.[0]?.toUpperCase() || 'U';
+  const userName = session?.user?.name || 'Demo User';
+  const userEmail = session?.user?.email || 'demo@paypilot.dev';
+
   return (
     <aside
       className={cn(
-        'flex flex-col h-full w-64 bg-[var(--card)] border-r border-[var(--rule)] select-none z-40',
+        'sidebar-gradient flex flex-col h-full border-r border-[var(--rule)] select-none z-40 relative overflow-hidden',
+        'w-[var(--sidebar-w,260px)]',
         className,
       )}
     >
-      <div className="flex items-center gap-3 px-6 h-16 border-b border-[var(--rule)]">
-        <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-[var(--ledger)] text-[var(--ledger-ink)]">
-          <svg viewBox="0 0 32 32" className="w-6 h-6" aria-hidden="true">
-            <path d="M5 18 18 5l9 9-13 13-3-7-6-2Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <path d="m8 16 8 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      {/* Subtle top gradient glow */}
+      <div
+        className="pointer-events-none absolute top-0 left-0 right-0 h-32 opacity-40"
+        style={{
+          background: 'radial-gradient(ellipse 80% 60% at 50% -10%, var(--ledger-glow), transparent 70%)',
+        }}
+      />
+
+      {/* Logo / Brand */}
+      <div className="relative flex items-center gap-3 px-5 h-[62px] border-b border-[var(--rule)] shrink-0">
+        <div className="relative flex items-center justify-center w-9 h-9 rounded-xl overflow-hidden shrink-0"
+          style={{ background: 'linear-gradient(135deg, var(--ledger) 0%, var(--purple) 100%)' }}
+        >
+          <svg viewBox="0 0 32 32" className="w-5 h-5 text-white" aria-hidden="true">
+            <path d="M6 19 18 7l8 8-12 12-3-5-5-3Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <path d="m9 17 7 2.5 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
+          <div className="absolute inset-0 opacity-20"
+            style={{ background: 'radial-gradient(circle at 30% 30%, white, transparent 60%)' }}
+          />
         </div>
         <div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-lg tracking-tight text-[var(--ink)]">PayPilot</span>
+          <div className="font-bold text-base tracking-tight text-[var(--ink)] flex items-center gap-1.5">
+            PayPilot
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-[var(--ledger)]/15 text-[var(--ledger)] border border-[var(--ledger)]/25">
+              v2
+            </span>
           </div>
-          <p className="text-[11px] text-[var(--ink-3)]">Autonomous spend management</p>
+          <p className="text-[10px] text-[var(--ink-3)] leading-tight mt-0.5">Autonomous spend management</p>
         </div>
       </div>
 
-      {/* Nav List */}
-      <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-3)]">
-          WORKSPACE
-        </div>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive =
-            item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-
+      {/* Nav items */}
+      <div className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
+        {sections.map((section) => {
+          const items = navItems.filter((n) => n.section === section.id);
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                'focus-ring relative flex items-center justify-between px-3.5 py-2.5 rounded-[var(--radius)] text-sm font-medium transition-all duration-200 group',
-                isActive
-                  ? 'bg-[var(--ledger)] text-[var(--ledger-ink)] font-semibold shadow-[2px_3px_0_color-mix(in_srgb,var(--ink)_12%,transparent)]'
-                  : 'text-[var(--ink-2)] hover:translate-x-1 hover:bg-[var(--paper)] hover:text-[var(--ink)]',
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Icon
-                  className={cn(
-                    'w-4 h-4 transition-colors',
-                    isActive ? 'text-[var(--ledger-ink)]' : 'text-[var(--ink-3)] group-hover:text-[var(--ink)]',
-                  )}
-                />
-                <span>{item.label}</span>
+            <div key={section.id}>
+              <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--ink-3)]">
+                {section.label}
               </div>
-              {item.badge && (
-                <span
-                  className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide',
-                    isActive
-                      ? 'bg-[var(--ledger)] text-[var(--ledger-ink)]'
-                      : 'text-[var(--brass)] border border-[var(--rule)]',
-                  )}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </Link>
+              <div className="space-y-0.5">
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive =
+                    item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+                  const badgeCls = item.badgeColor ? badgeColorMap[item.badgeColor] : badgeColorMap.blue;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      className={cn(
+                        'focus-ring group relative flex items-center justify-between px-3 py-2.5 rounded-[10px] text-sm font-medium transition-all duration-150',
+                        isActive
+                          ? 'bg-[var(--ledger)] text-white shadow-sm'
+                          : 'text-[var(--ink-2)] hover:bg-[var(--paper-2)] hover:text-[var(--ink)]',
+                      )}
+                    >
+                      {/* Active left indicator */}
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r bg-white/40" />
+                      )}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={cn(
+                            'w-4 h-4 shrink-0 transition-colors',
+                            isActive ? 'text-white' : 'text-[var(--ink-3)] group-hover:text-[var(--ink)]',
+                          )}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {item.badge && (
+                          <span
+                            className={cn(
+                              'px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border',
+                              isActive ? 'bg-white/20 text-white border-white/30' : badgeCls,
+                            )}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                        <ChevronRight
+                          className={cn(
+                            'w-3.5 h-3.5 transition-all',
+                            isActive ? 'text-white/70 opacity-100' : 'text-[var(--ink-3)] opacity-0 group-hover:opacity-100',
+                          )}
+                        />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>
 
-      <div className="p-4 mx-3 mb-3 rounded-xl bg-[var(--paper)] border border-[var(--rule)]">
-        <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[var(--ink)]">
-          <Sparkles className="w-3.5 h-3.5 text-[var(--brass)]" />
-          <span>Spend controls are on</span>
+      {/* Quick tip */}
+      <div className="mx-3 mb-3 p-3.5 rounded-[12px] bg-[var(--ledger)]/8 border border-[var(--ledger)]/20">
+        <div className="flex items-center gap-2 mb-1 text-xs font-semibold text-[var(--ledger)]">
+          <Zap className="w-3.5 h-3.5" />
+          <span>Spend controls active</span>
         </div>
         <p className="text-[11px] text-[var(--ink-3)] leading-relaxed">
           Every purchase follows your approval rules and spending limits.
         </p>
       </div>
 
-      {/* User Footer */}
-      <div className="p-3 border-t border-[var(--rule)]">
-        <div className="flex items-center justify-between px-3 py-2 bg-[var(--paper)] border border-[var(--rule)]">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--ledger)] text-[var(--ledger-ink)] font-semibold text-xs shrink-0">
-              {session?.user?.name?.[0] || 'U'}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-[var(--ink)] truncate">
-                {session?.user?.name || 'Authenticated User'}
-              </div>
-              <div className="text-[10px] text-[var(--ink-3)] truncate">
-                {session?.user?.email || 'demo@paypilot.dev'}
-              </div>
-            </div>
+      {/* User footer */}
+      <div className="px-3 pb-3 border-t border-[var(--rule)] pt-3 shrink-0">
+        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] bg-[var(--paper-2)] border border-[var(--rule)] group">
+          <div
+            className="flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs text-white shrink-0"
+            style={{ background: 'linear-gradient(135deg, var(--ledger) 0%, var(--purple) 100%)' }}
+          >
+            {userInitial}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-semibold text-[var(--ink)] truncate">{userName}</div>
+            <div className="text-[10px] text-[var(--ink-3)] truncate">{userEmail}</div>
           </div>
           <button
             onClick={handleSignOut}
             title="Sign Out"
-            className="focus-ring pressable p-1.5 rounded-lg text-[var(--ink-3)] hover:text-[var(--vermilion)] hover:bg-[var(--paper-2)] transition-colors cursor-pointer"
+            className="focus-ring p-1.5 rounded-lg text-[var(--ink-3)] hover:text-[var(--vermilion)] hover:bg-[var(--paper)] transition-colors cursor-pointer shrink-0 opacity-0 group-hover:opacity-100"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

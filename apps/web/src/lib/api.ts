@@ -295,4 +295,33 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ eventType, orderId, captureId }),
     }),
+
+  // ── NEW ADDITIVE ENDPOINTS ──────────────────────────────────
+  // These are new API calls for new features added in v2.
+  // They do NOT modify any existing bindings.
+
+  // Product search with extended params (store page)
+  searchProducts: (params: { query?: string; category?: string; sort?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params.query) query.set('search', params.query);
+    if (params.category && params.category !== 'All') query.set('category', params.category);
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<{
+      data: Product[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/api/products${qs}`, { method: 'GET' }, {
+      parse: (value) => {
+        const response = value as { data?: unknown; pagination?: unknown };
+        if (!Array.isArray(response.data) || !response.pagination) {
+          throw new Error('Invalid product catalog response');
+        }
+        return {
+          data: (response.data as unknown[]).map((product) => ProductSchema.parse(product)),
+          pagination: response.pagination as { page: number; limit: number; total: number; totalPages: number },
+        };
+      },
+    });
+  },
 };

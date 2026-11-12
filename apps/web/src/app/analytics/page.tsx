@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact, type CustomCellRendererProps } from 'ag-grid-react';
