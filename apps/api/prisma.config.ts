@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
@@ -7,6 +7,8 @@ export default defineConfig({
     seed: 'tsx prisma/seed.ts',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    // Client generation does not connect to the database. Render may not expose
+    // DATABASE_URL until runtime, so use a local placeholder during builds.
+    url: process.env.DATABASE_URL ?? 'postgresql://localhost:5432/paypilot?schema=public',
   },
 });
