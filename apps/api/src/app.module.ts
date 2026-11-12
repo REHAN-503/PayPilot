@@ -19,6 +19,7 @@ import { NegotiationModule } from './negotiation/negotiation.module.js';
 import { TimelineModule } from './timeline/timeline.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { ReceiptsModule } from './receipts/receipts.module.js';
+import { ChatModule } from './chat/chat.module.js';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ReceiptsModule } from './receipts/receipts.module.js';
     TimelineModule,
     AnalyticsModule,
     ReceiptsModule,
+    ChatModule,
     ProductsModule,
     IntentsModule,
     PlansModule,

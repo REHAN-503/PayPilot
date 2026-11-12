@@ -80,6 +80,16 @@ async function request<T>(
 }
 
 export const api = {
+  chat: (message: string) =>
+    request<{
+      inScope: boolean;
+      intent: 'answer' | 'product_search' | 'create_plan' | 'out_of_scope';
+      message: string;
+      planPrompt: string | null;
+      products: Product[];
+      actions: Array<'browse_store' | 'view_plans' | 'create_plan' | 'view_policy'>;
+    }>('/api/chat', { method: 'POST', body: JSON.stringify({ message }) }),
+
   // Catalog
   getProducts: (params?: { search?: string; category?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams();

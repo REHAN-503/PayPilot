@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { LlmService } from '../agent/llm/llm.service.js';
@@ -23,7 +23,7 @@ import {
   type RiskAssessmentResult as NewRiskResult,
 } from '../policy/risk.gate.js';
 import { ReplanService } from '../replan/replan.service.js';
-import { toCents, fromCents, sumCents } from '../common/money.js';
+import { fromCents, sumCents } from '../common/money.js';
 import type { LlmRequestMode } from '../agent/llm/llm.service.js';
 
 export type ActivityCallback = (activity: any) => void;
@@ -131,7 +131,10 @@ export class IntentsService {
           requestMode === 'live' ||
           (!isDemoUser && (this.llmService.isForceLive() || this.llmService.isLiveRequired()))
         ) {
-          throw err;
+          this.logger.warn(`Live AI intent parsing failed: ${err.message}`);
+          throw new ServiceUnavailableException(
+            'Live AI is unavailable. Check the API service logs and provider configuration.',
+          );
         }
         this.logger.warn(`LLM unavailable for intent parsing, using deterministic fallback: ${err.message}`);
         fallbackUsed = true;
@@ -416,7 +419,9 @@ export class IntentsService {
 
       const policyEvaluation: NewPolicyResult = evaluatePolicyNew(
         {
-          total: toCents(planExecution.total),
+          // The policy engine accepts decimal currency units (dollars), while
+          // ledger and arithmetic helpers use integer cents internally.
+          total: planExecution.total,
           currency: 'USD',
           category,
         },

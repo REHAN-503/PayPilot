@@ -6,21 +6,15 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import {
   Bot,
   Send,
   User,
   Sparkles,
   ShoppingBag,
-  Handshake,
-  ShieldCheck,
   RefreshCw,
   ArrowRight,
   Package,
-  CheckCircle2,
-  Zap,
-  MessageSquare,
   Trash2,
   Copy,
   Check,
@@ -65,134 +59,6 @@ const SUGGESTIONS = [
   { label: 'Show me my pending approvals', icon: '✅' },
   { label: 'What\'s my daily spending limit?', icon: '💰' },
 ];
-
-/* ============================================================
-   AI RESPONSE GENERATOR
-   ============================================================ */
-async function generateAIResponse(
-  message: string,
-  products: Product[],
-  plans: PurchasePlan[],
-  policy: { dailySpendingLimit?: number | string | null; monthlySpendingLimit?: number | string | null; autonomyMode?: string } | null,
-): Promise<{ content: string; relatedProducts?: Product[]; plan?: PurchasePlan | null; actions?: ChatAction[] }> {
-  const lowerMsg = message.toLowerCase();
-
-  // Check if it's a purchase/product request
-  const isBuyRequest = /buy|purchase|need|want|looking for|find me|get me|order/i.test(lowerMsg);
-  const isApprovalCheck = /approval|pending|authorize|approve/i.test(lowerMsg);
-  const isPolicyCheck = /limit|policy|budget|spend|remaining/i.test(lowerMsg);
-  const isNegotiateRequest = /negotiate|discount|price|cheaper|bargain/i.test(lowerMsg);
-
-  // Product-related request
-  if (isBuyRequest) {
-    // Try to match with available products
-    const matched = products.filter(p => {
-      const name = p.name.toLowerCase();
-      const cat = (p.category || '').toLowerCase();
-      const words = lowerMsg.split(/\s+/);
-      return words.some(w => w.length > 3 && (name.includes(w) || cat.includes(w)));
-    }).slice(0, 3);
-
-    // Extract budget if mentioned
-    const budgetMatch = lowerMsg.match(/\$(\d+(?:,\d+)?(?:\.\d{2})?)|(\d+(?:,\d+)?) dollars?/i);
-    const budget = budgetMatch ? parseFloat(budgetMatch[1] || budgetMatch[2]) : null;
-
-    const affordable = budget
-      ? matched.filter(p => Number(p.price) <= budget)
-      : matched;
-
-    if (affordable.length > 0) {
-      const top = affordable[0];
-      return {
-        content: `I found **${affordable.length} matching product${affordable.length > 1 ? 's' : ''}** for you! Here's my top recommendation:\n\n**${top.name}** — ${formatCurrency(top.price)}\n\n${top.description ? `${top.description.slice(0, 150)}...` : ''}\n\nI can create a full purchase plan for this — would you like me to proceed? The plan will check your policy limits and risk score before checkout.`,
-        relatedProducts: affordable,
-        actions: [
-          { label: `Plan: ${top.name}`, type: 'plan', payload: `I need ${top.name} — budget ${budget ? formatCurrency(budget) : formatCurrency(Number(top.price) * 1.1)}` },
-          { label: 'View all results', type: 'navigate', payload: `/store?search=${encodeURIComponent(message)}` },
-        ],
-      };
-    } else {
-      const content = budget
-        ? `I couldn't find products matching your description under ${formatCurrency(budget)}. Would you like me to:\n\n• Browse all products in the store\n• Try a broader search\n• Adjust your budget slightly`
-        : `I'll search the catalog for that. Try browsing the store or give me a more specific product name.`;
-      return {
-        content,
-        actions: [
-          { label: 'Browse Store', type: 'navigate', payload: '/store' },
-          { label: 'Create a Plan', type: 'navigate', payload: '/' },
-        ],
-      };
-    }
-  }
-
-  // Policy / budget check
-  if (isPolicyCheck) {
-    const dailyLimit = policy?.dailySpendingLimit ? Number(policy.dailySpendingLimit) : null;
-    const monthlyLimit = policy?.monthlySpendingLimit ? Number(policy.monthlySpendingLimit) : null;
-    const mode = policy?.autonomyMode ?? 'ASK_EVERY_TIME';
-
-    return {
-      content: `Here's your current spending policy:\n\n• **Autonomy Mode:** ${mode.replace(/_/g, ' ')}\n${dailyLimit ? `• **Daily Limit:** ${formatCurrency(dailyLimit)}\n` : ''}${monthlyLimit ? `• **Monthly Limit:** ${formatCurrency(monthlyLimit)}\n` : ''}• **Auto Execute:** ${mode === 'AUTO_WITHIN_LIMITS' ? 'Enabled within limits' : 'Disabled'}\n\nAll purchases are validated against these rules before PayPal checkout is initiated.`,
-      actions: [
-        { label: 'Edit Policy', type: 'navigate', payload: '/policy' },
-      ],
-    };
-  }
-
-  // Approval check
-  if (isApprovalCheck) {
-    const pending = plans.filter(p => p.status === 'AWAITING_APPROVAL');
-    if (pending.length > 0) {
-      return {
-        content: `You have **${pending.length} plan${pending.length > 1 ? 's' : ''} awaiting approval**:\n\n${pending.slice(0, 3).map(p => `• **${p.items?.[0]?.productName || 'Order'}** — ${formatCurrency(p.total)}`).join('\n')}\n\nClick the plan link below to review and authorize payment.`,
-        plan: pending[0],
-        actions: pending.slice(0, 2).map(p => ({
-          label: `Review: ${p.items?.[0]?.productName?.slice(0, 20) || 'Plan'}`,
-          type: 'navigate' as const,
-          payload: `/plans/${p.id}`,
-        })),
-      };
-    }
-    return {
-      content: `You have no plans currently awaiting approval. All recent plans have been processed.\n\nWant me to help you create a new purchase plan?`,
-      actions: [{ label: 'Create a Plan', type: 'navigate', payload: '/' }],
-    };
-  }
-
-  // Negotiation request
-  if (isNegotiateRequest) {
-    const activePlans = plans.filter(p => p.status === 'AWAITING_APPROVAL' || p.status === 'READY');
-    return {
-      content: `Great idea! The AI negotiation engine can bargain with the merchant to get you a better price. Here's how it works:\n\n1. **Select a plan** you want to negotiate\n2. **Set your target discount** (e.g. 10–20%)\n3. **Watch the AI buyer and merchant agents** exchange offers in real-time\n4. **Review the final agreed price** before approving payment\n\n${activePlans.length > 0 ? `You have ${activePlans.length} plan(s) ready for negotiation.` : 'Create a purchase plan first, then negotiate!'}`,
-      actions: [
-        activePlans.length > 0
-          ? { label: 'Negotiate Now', type: 'navigate', payload: `/negotiation?planId=${activePlans[0].id}` }
-          : { label: 'Create a Plan', type: 'navigate', payload: '/' },
-        { label: 'Learn About Negotiation', type: 'navigate', payload: '/negotiation' },
-      ],
-    };
-  }
-
-  // General greeting / help
-  if (/hello|hi|hey|help|what can you/i.test(lowerMsg)) {
-    return {
-      content: `Hi! I'm **PayPilot AI** — your autonomous procurement assistant. Here's what I can do:\n\n🛒 **Find products** — Describe what you need and I'll search the live catalog\n📋 **Create plans** — I'll build a purchase plan with AI-powered recommendations\n🤝 **Negotiate prices** — The AI buyer agent can bargain for discounts\n🛡️ **Check policies** — I'll verify your spending limits and rules\n✅ **Review approvals** — See what's pending your authorization\n\nJust tell me what you need in plain language!`,
-      actions: [
-        { label: 'Browse Store', type: 'navigate', payload: '/store' },
-        { label: 'View Pending Plans', type: 'navigate', payload: '/plans' },
-      ],
-    };
-  }
-
-  // Default / catch-all
-  return {
-    content: `I understand you're asking about "${message}". As your AI procurement assistant, I can help you:\n\n• Search the product catalog for specific items\n• Create purchase plans with AI recommendations\n• Check and negotiate prices\n• Review your spending policies and limits\n\nTry being more specific — e.g. "Find me a webcam under $80" or "What are my pending approvals?"`,
-    actions: [
-      { label: 'Browse Store', type: 'navigate', payload: '/store' },
-      { label: 'Create a Plan', type: 'navigate', payload: '/' },
-    ],
-  };
-}
 
 /* ============================================================
    MESSAGE BUBBLE COMPONENT
@@ -344,22 +210,6 @@ export default function ChatPage() {
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
-  const { data: products } = useQuery({
-    queryKey: ['products-chat'],
-    queryFn: () => api.getProducts({ limit: 50 }),
-    staleTime: 60_000,
-  });
-
-  const { data: plans } = useQuery({
-    queryKey: ['plans'],
-    queryFn: () => api.getPlans(),
-  });
-
-  const { data: policyData } = useQuery({
-    queryKey: ['policy'],
-    queryFn: () => api.getPolicy(),
-  });
-
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -387,33 +237,27 @@ export default function ChatPage() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate network delay for realistic feel
-    await new Promise((r) => setTimeout(r, 600 + Math.random() * 800));
-
     try {
-      const policyInfo = policyData?.policy
-        ? {
-            dailySpendingLimit: policyData.policy.dailySpendingLimit,
-            monthlySpendingLimit: policyData.policy.monthlySpendingLimit,
-            autonomyMode: policyData.policy.autonomyMode,
-          }
-        : null;
-
-      const response = await generateAIResponse(
-        text,
-        products?.data ?? [],
-        plans ?? [],
-        policyInfo,
-      );
-
+      const response = await api.chat(text);
+      const actions: ChatAction[] = response.actions.map((action) => {
+        if (action === 'create_plan' && response.planPrompt) {
+          return { label: 'Create purchase plan', type: 'plan', payload: response.planPrompt };
+        }
+        const destinations = {
+          browse_store: { label: 'Browse Store', payload: '/store' },
+          view_plans: { label: 'View Plans', payload: '/plans' },
+          create_plan: { label: 'Create a Plan', payload: '/' },
+          view_policy: { label: 'View Policy', payload: '/policy' },
+        } as const;
+        return { ...destinations[action], type: 'navigate' as const };
+      });
       const assistantMsg: ChatMessage = {
         id: loadingId,
         role: 'assistant',
-        content: response.content,
+        content: response.message,
         timestamp: new Date(),
-        products: response.relatedProducts,
-        plan: response.plan,
-        actions: response.actions,
+        products: response.products,
+        actions,
         isLoading: false,
       };
 
@@ -421,7 +265,7 @@ export default function ChatPage() {
     } catch {
       setMessages((prev) => prev.map((m) =>
         m.id === loadingId
-          ? { ...m, content: 'Sorry, I encountered an error. Please try again.', isLoading: false }
+          ? { ...m, content: 'PayPilot AI could not answer right now. Please retry in a moment.', isLoading: false }
           : m,
       ));
     } finally {
